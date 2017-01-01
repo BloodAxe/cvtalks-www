@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Argument checking for native addons for Node.js. Do it right!</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="Argument checking for native addons for Node.js. Do it right!" />
+<meta property="og:description" content="![NanCheck](logo.jpg)  During development of CloudCV I came to the problem on converting v8::Arguments to native C&#43;&#43; data types in my Node.js native module. If you are new to C&#43;&#43; and Node.js, I suggest you to read how to write C&#43;&#43; modules for Node.js and connecting OpenCV and Node.js first.
+Mapping V8 data types to native C&#43;&#43; equivalents is trivial, but somewhat wordy. One should take the argument at given index, check whether it is defined, then check it&rsquo;s type and finally cast to C&#43;&#43; type." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/how-to-convert-args-from-js-to-cpp/" />
+
+
+<meta property="og:updated_time" content="2014-09-11T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">Argument checking for native addons for Node.js. Do it right!</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2014-09-11 00:00:00 &#43;0000 UTC">September 11, 2014</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			
+
+<div class="featured-image">
+![NanCheck](logo.jpg)
+</div>
+
+<p>During development of <a href="https://cloudcv.io">CloudCV</a> I came to the problem on converting <code>v8::Arguments</code> to
+native C++ data types in my Node.js native module. If you are new to C++ and Node.js, I suggest you to read how to write C++ modules for Node.js and connecting OpenCV and Node.js first.</p>
+
+<p>Mapping V8 data types to native C++ equivalents is trivial, but somewhat wordy. One should take the
+argument at given index, check whether it is defined, then check it&rsquo;s type and finally cast to C++ type.
+This works fine while you have function that receive two or three arguments of trivial type (That can be mapped directly to built-in C++ types). What about strings? Arrays? Complex types like objects or function callback?
+You code will grow like and became hard-to-maintain pasta-code some day.</p>
+
+<p>In this post I present my approach on solving this problem with a laconic way on describing what do you expect as input arguments.</p>
+
+<p><span class="more"></span>
+<div class="clearfix"></div></p>
+
+<p>To illustrate the difference between imperative approach I included source code for calibrationPatternDetect method that expose function to detect calibration pattern on a single image to Node.js code. As you may see below, there are a lot of <em>if</em> conditions, magic numbers and no type checking for a half of arguments. But even without it, this function occupy 50 lines of code.
+What even worse, 90% of this code is going to be the same for other functions. The main purpose of code of any <code>NAN_METHOD</code> implementation - to marshal data in such a way it can be used by C++ code.</p>
+
+<pre><code class="language-cpp">NAN_METHOD(calibrationPatternDetect)
+{
+    NanScope();
+
+    if (args.Length() != 5)
+    {
+        return NanThrowError(&quot;Invalid number of arguments&quot;);  
+    }
+
+    if (!args[0]-&gt;IsObject())
+    {
+        return NanThrowTypeError(&quot;First argument should be a Buffer&quot;);      
+    }
+
+    // 0 - image
+    // 1 - width
+    // 2 - height
+    // 3 - pattern
+    // 4 - callback
+
+    int w  = args[1]-&gt;Uint32Value();
+    int h  = args[2]-&gt;Uint32Value();
+    int pt = args[3]-&gt;Uint32Value();
+    PatternType pattern;
+
+    switch (pt)
+    {
+        case 0:
+            pattern = CHESSBOARD;
+            break;
+
+        case 1:
+            pattern = CIRCLES_GRID;
+            break;
+
+        case 2:
+            pattern = ASYMMETRIC_CIRCLES_GRID;
+            break;    
+
+        default:
+            return NanThrowError(&quot;Unsupported pattern type. Only 0 (CHESSBOARD), 1 (CIRCLES_GRID) or 2 (ASYMMETRIC_CIRCLES_GRID) are supported.&quot;);
+    };
+
+    if (!args[4]-&gt;IsFunction())
+    {
+        return NanThrowTypeError(&quot;Last argument must be a function.&quot;);
+    }
+
+    // The task holds our custom status information for this asynchronous call,
+    // like the callback function we want to call when returning to the main
+    // thread and the status information.
+
+    NanCallback *callback = new NanCallback(args[4].As&lt;Function&gt;());
+}
+</code></pre>
+
+<p>So the goal is to add more syntax sugar for argument checking.
+Basically, it should provide a convenient way to check number and type of arguments passed.
+For <a href="https://cloudcv.io">CloudCV</a> project I&rsquo;ve ended with a declarative approach because I found it fit my needs very much
+and makes argument checking self-explanatory. Here is how new implementation of <code>calibrationPatternDetect</code> looks like:</p>
+
+<pre><code class="language-cpp">NAN_METHOD(calibrationPatternDetect)
+{
+    NanScope();
+
+    Local&lt;Object&gt;   imageBuffer;
+    Local&lt;Function&gt; callback;
+    cv::Size        patternSize;
+    PatternType     pattern;
+
+    try
+    {
+        if (NanCheck(args).ArgumentsCount(5)
+            .Argument(0).IsBuffer().Bind(imageBuffer)
+            .Argument(1).Bind(patternSize.width)
+            .Argument(2).Bind(patternSize.height)
+            .Argument(3).StringEnum&lt;PatternType&gt;({ 
+                { &quot;CHESSBOARD&quot;,     PatternType::CHESSBOARD }, 
+                { &quot;CIRCLES_GRID&quot;,   PatternType::CIRCLES_GRID }, 
+                { &quot;ACIRCLES_GRID&quot;,  PatternType::ACIRCLES_GRID } }).Bind(pattern)
+            .Argument(4).IsFunction().Bind(callback))
+        {
+            NanCallback *nanCallback = new NanCallback(callback);
+            NanAsyncQueueWorker(new DetectPatternTask(imageBuffer, patternSize, pattern, nanCallback));
+            NanReturnValue(NanTrue());
+        }
+
+        NanReturnValue(NanFalse());
+    }
+    catch (ArgumentMismatchException exc)
+    {
+        return NanThrowTypeError(exc.what());
+    }
+}
+</code></pre>
+
+<p>I hope you agree that second version is much more easy to read. Fluent architecture allows to write predicates in a chain, which actually is very similar to the way we thing. All predicate has self-telling names made from verb and a noun. So let me give you a brief overview what <code>NanCheck</code> is capable of.</p>
+
+<h2 id="fluent-api">Fluent API</h2>
+
+<p><a href="http://en.wikipedia.org/wiki/Method_chaining">Method chaining</a> (aka Fluent API) makes it very easy to build final predicate for argument checking via consecutive checks.
+Each next step will be made <strong>if and only if</strong> all previous predicates were successful.
+In case of error, predicate will throw an <code>ArgumentMismatchException</code> exception that will terminate all further checks. <code>NanCheck(args)</code> can be evaluated to <code>bool</code> which makes it possible to use NanCheck in a condition statement:</p>
+
+<pre><code class="language-cpp">if (NanCheck(args). ...) {
+    // This code will be executed if argument parsing
+    // will be successful        
+}
+</code></pre>
+
+<h2 id="type-checking">Type checking</h2>
+
+<p>To check particular argument at given index, <code>NanCheckArguments</code> provide a <code>Argument(index)</code> function. This function lets you to build a sub-predicate for given argument and bind it&rsquo;s value with particular local variable:</p>
+
+<pre><code class="language-cpp">    if (NanCheck(args).Argument(0).IsBuffer()) {
+        // This code will be executed if argument parsing
+        // will be successful        
+    }
+</code></pre>
+
+<p>Currently, <code>NanCheck</code> support type checking of the following built-in V8 types:
+1. <code>v8::Function</code>
+2. <code>v8::Object</code>
+3. <code>v8::String</code></p>
+
+<p>In addition, it offers <code>NotNull</code> predicate to ensure argument is not null or empty.
+The list of predicates will grow for sure. New functions to check whether argument is <code>v8::Array</code>, <code>v8::Number</code>, <code>v8::Integer</code>, <code>v8::Boolean</code> will be added in a next updates.</p>
+
+<h2 id="binding">Binding</h2>
+
+<p>After type checking, it&rsquo;s necessary to complete sub-predicate construction by <em>binding</em> argument to a local variable. Binding is a assignment of the argument (with data marshaling, if it&rsquo;s necessary) to a variable that will be used later;</p>
+
+<pre><code class="language-cpp">    Local&lt;Object&gt;   imageBuffer;
+    if (NanCheck(args).Argument(0).IsBuffer().Bind(imageBuffer)) {
+        // This code will be executed if argument parsing
+        // will be successful        
+    }
+</code></pre>
+
+<p>NanCheck support transparent binding to all v8 types (Number, String, Function, Object, Array, etc.), native C++ and OpenCV types (via <a href="https://github.com/BloodAxe/CloudCVBackend/blob/master/src/framework/marshal/opencv.cpp">marshaling system</a>):</p>
+
+<pre><code class="language-cpp">    cv::Size        patternSize;
+    if (NanCheck(args).Argument(1).IsObject().Bind(patternSize)) {
+        // This code will be executed if argument parsing
+        // will be successful        
+    }
+</code></pre>
+
+<p>There is a special case of string arguments called <code>StringEnum</code> - that is, a string argument, which can be one of a priory defined values. It introduced to support *<em>C++ enum</em> types and pass them
+as string constants. <code>StringEnum</code> predicate allow to parse string value and map to C++ enum type:</p>
+
+<pre><code class="language-cpp">    PatternType     pattern;
+    if (NanCheck(args)
+        .Argument(3).StringEnum&lt;PatternType&gt;({ 
+            { &quot;CHESSBOARD&quot;,     PatternType::CHESSBOARD }, 
+            { &quot;CIRCLES_GRID&quot;,   PatternType::CIRCLES_GRID }, 
+            { &quot;ACIRCLES_GRID&quot;,  PatternType::ACIRCLES_GRID } }).Bind(pattern)) {
+        // This code will be executed if argument parsing
+        // will be successful        
+    }
+</code></pre>
+
+<h2 id="implementation-highlights">Implementation highlights</h2>
+
+<p>Thanks to C++11, it&rsquo;s really easy to construct predicate chain using lambda functions. Basically predicate chain is nothing but a recursive anonymous function of the following form:</p>
+
+<pre><code class="language-cpp">    auto initFn = [innerPredicate, outerPredicate](const v8::Arguments&amp; args) {
+        return innerPredicate(args) &amp;&amp; outerPredicate(args);
+    };
+</code></pre>
+
+<p>To illustrate an idea of building predicate chain, let&rsquo;s take a look on ArgumentsCount implementation:</p>
+
+<pre><code class="language-cpp">    NanCheckArguments&amp; NanCheckArguments::ArgumentsCount(int count)
+    {
+        return AddAndClause([count](const v8::Arguments&amp; args) 
+        { 
+            if (args.Length() != count)
+                throw ArgumentMismatchException(args.Length(), count); 
+
+            return true;
+        });
+    }
+</code></pre>
+
+<p>Here we construct outer predicate which compare number of arguments to expected value
+and throw an exception if it does not match.</p>
+
+<p>With a help of <code>std::initializer_list</code> it became really simple to declare string enum with minimal syntax overhead:</p>
+
+<pre><code class="language-cpp">    class NanMethodArgBinding
+    {
+    public:
+    ...
+        template &lt;typename T&gt;
+        NanArgStringEnum&lt;T&gt; 
+        StringEnum(std::initializer_list&lt; std::pair&lt;const char*, T&gt; &gt; possibleValues);
+    ...
+    };
+</code></pre>
+
+<p>Now we&rsquo;re able to call this function with arbitrary number of elements for this enum using
+<code>std::initializer_list</code> syntax:</p>
+
+<pre><code class="language-cpp">    { 
+        { &quot;CHESSBOARD&quot;,     PatternType::CHESSBOARD }, 
+        { &quot;CIRCLES_GRID&quot;,   PatternType::CIRCLES_GRID }, 
+        { &quot;ACIRCLES_GRID&quot;,  PatternType::ACIRCLES_GRID }
+    }
+</code></pre>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p><a href="https://github.com/BloodAxe/CloudCVBackend/blob/master/src/framework/NanCheck.hpp"><strong>NanCheck</strong></a> helped me to reduce amount of code required to check arguments passed to <a href="https://cloudcv.io">CloudCV</a> back-end. There are many cool ideas that I&rsquo;ll probably add as soon as there will be necessity to have them in my library:
+- Strongly typed objects (Objects with required fields)
+- Optional parameters with default values
+- Automatic type inference based on <code>Bind&lt;T&gt;(...)</code> type.
+- Support of multiple types per argument (Parameter can be either of type A or B)</p>
+
+<p>Please leave your comments on this post. I&rsquo;ve spent many hours on figuring out how to implement data marshaling and type checking in V8 and Node.js, so please help information to
+spread out - share and re-tweet this post. Cheers!</p>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/cloudcv/" rel="tag">cloudcv</a></li>
+		<li><a href="/tags/nodejs/" rel="tag">nodejs</a></li>
+		<li><a href="/tags/tutorials/" rel="tag">tutorials</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/computer-vision-digest-september-2014/" rel="prev"><span>«Previous</span><p>Computer Vision Digest - September 2014</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/computer-vision-digest-august-2014/" rel="next"><span>Next»</span><p>Computer Vision Digest - August 2014</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/how-to-convert-args-from-js-to-cpp\/';
+    var disqus_title = 'Argument checking for native addons for Node.js. Do it right!';
+    var disqus_url = '\/post\/how-to-convert-args-from-js-to-cpp\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

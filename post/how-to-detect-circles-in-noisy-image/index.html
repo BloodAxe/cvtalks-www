@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to detect circles in noisy images</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="How to detect circles in noisy images" />
+<meta property="og:description" content="p | This was a request from a(href=&ldquo;http://www.reddit.com/r/computervision/comments/2a1lvi/help_how_to_process_this_image_to_find_the_circles/&quot;) /r/computervision. | A reddit member was asking on how to count number of eggs on quite | noisy image like you may see below. | I&rsquo;ve decided to write a simple algorithm that does the job and explain how it works.
+div.beforeafter img(src=&quot;source.jpg&quot;,alt=&quot;before&quot;) img(src=&quot;display.jpg&quot;,alt=&quot;after&quot;)  span.more
+h2 Step 1 - Filter image
+p img(src=&ldquo;source.jpg&rdquo;,alt=&ldquo;Source image&rdquo;) | The original image has noticeable color noise and therefore it must be filtered before we pass it to further stages." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/how-to-detect-circles-in-noisy-image/" />
+
+
+<meta property="og:updated_time" content="2014-07-14T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">How to detect circles in noisy images</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2014-07-14 00:00:00 &#43;0000 UTC">July 14, 2014</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			<p>p
+    | This was a request from
+    a(href=&ldquo;<a href="http://www.reddit.com/r/computervision/comments/2a1lvi/help_how_to_process_this_image_to_find_the_circles/&quot;">http://www.reddit.com/r/computervision/comments/2a1lvi/help_how_to_process_this_image_to_find_the_circles/&quot;</a>) /r/computervision.
+    | A reddit member was asking on how to count number of eggs on quite
+    | noisy image like you may see below.
+    | I&rsquo;ve decided to write a simple algorithm that does the job and explain how it works.</p>
+
+<pre><code>div.beforeafter
+    img(src=&quot;source.jpg&quot;,alt=&quot;before&quot;)
+    img(src=&quot;display.jpg&quot;,alt=&quot;after&quot;)
+</code></pre>
+
+<p>span.more</p>
+
+<p>h2 Step 1 - Filter image</p>
+
+<p>p
+    img(src=&ldquo;source.jpg&rdquo;,alt=&ldquo;Source image&rdquo;)
+    | The original image has noticeable color noise and therefore it must be filtered before we pass it to further stages.
+    | Ideally you should choose filter algorithm based on your task and noise model. For the sake of simplicity,
+    | I will not use Weiner filter or deconvolution to deal with blur and artifacts that are present on source image.</p>
+
+<p>p
+    | Instead, I will use pyramidal mean-shift filter.
+    | This algorithm works quite well on this problem and helps to get rid of artifacts.</p>
+
+<pre><code>pre.
+    cv::Mat inputRgbImage = cv::imread(&quot;input.jpg&quot;);
+    cv::Mat filtered;
+    cv::pyrMeanShiftFiltering(inputRgbImage, 
+                              filtered, 
+                              spatialWindowRadius, 
+                              colorWindowRadius, 
+                              2);
+</code></pre>
+
+<p>strong Result of filtering
+div.beforeafter.twentytwenty-container
+    img(src=&ldquo;source.jpg&rdquo;,alt=&ldquo;before&rdquo;)
+    img(src=&ldquo;filtered.jpg&rdquo;,alt=&ldquo;after&rdquo;)</p>
+
+<p>h2 Step 2 - Increase sharpness</p>
+
+<p>p
+    | As you may see - eggs edges are not too sharp. For circle detection we will use Hough transform. OpenCV&rsquo; Hough algorithm implementation use Canny edge detector to
+    | detect edges. Unfortunately it&rsquo;s not possible to pass manually computed binary image.
+    | Instead we have to pass 8-bit grayscale image for circle detection.
+    | Therefore we may want to increase their sharpness to make the image more friendly for Canny detector.</p>
+
+<p>p
+    | Sharpening can be easily done via unsharp mask.</p>
+
+<pre><code>pre.
+    // Perform in-place unsharp masking operation
+    // http://opencv-code.com/quick-tips/sharpen-image-with-unsharp-mask/
+    void unsharpMask(cv::Mat&amp; im) 
+    {
+        cv::Mat tmp;
+        cv::GaussianBlur(im, tmp, cv::Size(5,5), 5);
+        cv::addWeighted(im, 1.5, tmp, -0.5, 0, im);
+    }
+
+| However, unsharp mask can cause artifacts on edge borders which may lead to double edge.
+| I'm dealing with it by adding laplaccian component to final result:
+
+pre.
+    cv::cvtColor(filtered, grayImg, cv::COLOR_BGR2GRAY);
+    grayImg.convertTo(grayscale, CV_32F);
+
+    cv::GaussianBlur(grayscale, blurred, cv::Size(5,5), 0);
+
+    cv::Laplacian(blurred, laplaccian, CV_32F);
+
+    cv::Mat sharpened = 1.5f * grayscale
+                      - 0.5f * blurred
+                      - weight * grayscale.mul(scale * laplaccian);
+
+strong Result of sharpening
+div.beforeafter.twentytwenty-container
+    img(src=&quot;filtered.jpg&quot;,alt=&quot;before&quot;)
+    img(src=&quot;filteredGray.jpg&quot;,alt=&quot;after&quot;)
+</code></pre>
+
+<p>h3 Step 3 - Detect circles</p>
+
+<p>p
+    | After we got nicely filtered and enchanced image we can pass it to cv::HoughCircles to detect circles on the image.
+    | According to problem task, we can limit the maximum radius of circles that we are interested in (we need only small circles).
+    | In addition eggs can be close to each other, so it make sense to set minimal distance between two circles to minimal
+    | allowed diameter of the circle.</p>
+
+<pre><code>pre.
+   cv::HoughCircles(filteredGray, 
+                    circles, 
+                    cv::HOUGH_GRADIENT, 
+                    2,   // Accumulator resolution
+                    12,  // Minimum distance between the centers of the detected circles.
+                    cannyThreshold, 
+                    accumulatorThreshold, 
+                    5,   // Minimum circle radius
+                    20); // Maximum circle radius
+</code></pre>
+
+<p>h4 Step 4 - Validate eggs</p>
+
+<p>p
+    | I&rsquo;ve skipped validation step since I don&rsquo;t know what are the requirements to detected eggs.
+    | But I suppose that after detection of possible candidates using Hough the algorithm should validate each contour
+    | to verify it is exactly what we were looking for. Here are some hints what we can check:</p>
+
+<pre><code>ul
+    li Contour defects - how egg shape is close to ideal circle
+    li Contour breaks - is there any breaks in egg boundary or not
+    li Egg color - perhaps we need to count objects only of particular color
+    li Neighbours - maybe (or maybe not) we need only isolated objects.
+</code></pre>
+
+<p>h4 Step 5 - GPU Speed-up</p>
+
+<p>p
+    | The given implementation is very slow since it use CPU and doing a lot of stuff that can be efficiently computed on GPU.
+    | Fortunately, OpenCV has GPU implementations for mean-shift segmentation and hough transform and image blending.
+    | You can easily speed-up this algorithm by using cv::gpu types and functions instead.</p>
+
+<p>h4 Bonus content</p>
+
+<p>p
+    | Readed to the end of article? I&rsquo;m impressed :) Here you go, the full source code of the algorithm and small playground to
+    | tweak setting in runtime:</p>
+
+<pre><code>script(src=&quot;https://gist.github.com/BloodAxe/943fb14220021113d405.js&quot;)
+</code></pre>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/opencv/" rel="tag">opencv</a></li>
+		<li><a href="/tags/algorithms/" rel="tag">algorithms</a></li>
+		<li><a href="/tags/reddit/" rel="tag">reddit</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/pyimagesearch.com/" rel="prev"><span>«Previous</span><p>A good resource on image processing using Python</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/2014-06-computer-vision-digest/" rel="next"><span>Next»</span><p>Computer vision Digest - June 2014</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/how-to-detect-circles-in-noisy-image\/';
+    var disqus_title = 'How to detect circles in noisy images';
+    var disqus_url = '\/post\/how-to-detect-circles-in-noisy-image\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

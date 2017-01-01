@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Building OpenCV for iPhone in one click</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="Building OpenCV for iPhone in one click" />
+<meta property="og:description" content="My first post in this blog was about building OpenCV for iOS devices (iPhone, iPad, iPod and so on). But the build process that i used is not trivial at all. I received a lot of feedbacks and questions about building OpenCV, setting up XCode build environment. Today i made your life much easier. I have a gift - a build script, which will **build OpenCV **library for your iPhone, iPad, iPod or any other iOS based Apple device right in one click!" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/2011-02-25-building-opencv-for-iphone-in-one-click/" />
+
+
+<meta property="og:updated_time" content="2011-02-25T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">Building OpenCV for iPhone in one click</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2011-02-25 00:00:00 &#43;0000 UTC">February 25, 2011</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			
+
+<p><img src="build-opencv-script_thumb2.png" alt="build-opencv-script" title="build-opencv-script" /><br />
+My first post in this blog was about building OpenCV for iOS devices (iPhone, iPad, iPod and so on). But the build process that i used is not trivial at all. I received a lot of feedbacks and questions about building OpenCV, setting up XCode build environment. Today i made your life much easier. I have a gift - a build script, which will **build OpenCV **library for your iPhone, iPad, iPod or any other iOS based Apple device right <strong>in one click</strong>!  <strong>Update =  Now build script supports XCode 4 and iOS 4.3 SDK</strong> Sounds cool, yeah? Well, It&rsquo;s all true. Actually, my script does exactly the same things as i mentioned in original article. But without user interaction.</p>
+
+<p><span class="more"></span>
+<div class="alert alert-danger">
+    <p class="lead">This post is outdated.</p>
+    <p>
+    Current version of OpenCV supports iOS toolchain and can be build in much easier way. You are welcome to read this post for educational purposes. It&rsquo;s 99.9% chance that <strong>you will not be able to build OpenCV</strong> using instructions decribed here.
+    </p>
+</div></p>
+
+<h2 id="let-s-build-it">Let&rsquo;s build it!</h2>
+
+<p>We start, as usual, from getting a fresh source code from OpenCV repository:</p>
+
+<pre><code>svn co http://code.opencv.org/svn/opencv/trunk
+</code></pre>
+
+<p>Or, if you already have checked out in the past, run svn update command:</p>
+
+<pre><code>svn update
+</code></pre>
+
+<p>To start build process you should call build script with two required arguments: directory, where OpenCV sources located and directory, where libraries and headers will be places:</p>
+
+<pre><code>sh BuildOpenCV.sh trunk/opencv/ opencv_ios_build
+</code></pre>
+
+<p>Hit Enter and take a rest - it will take 5-10 minutes. There will be compilation errors. Something like:</p>
+
+<pre><code>The following build commands failed:
+opencv_highgui:
+CompileC cap_qtkit.o cap_qtkit.mm normal armv7 objective-c++ com.apple.compilers.gcc.4_2
+opencv_ts:
+CompileC ts_gtest.o ts_gtest.cpp normal armv7 c++ com.apple.compilers.gcc.4_2
+(2 failures)
+</code></pre>
+
+<p>It&rsquo;s okay. For now, OpenCV has to official iOS support, so some parts of code will cause compilation errors (highgui module). Maybe in future this will change, but ignore them now. If you are getting other errors, it looks like either you doing something wrong, or repository build is broken. When all is done, your build directory should looks like this:</p>
+
+<pre><code>   opencv_build_ios_4771
+   |-include
+   |---opencv
+   |---opencv2
+   |-----calib3d
+   |-----contrib
+   |-----core
+   |-----features2d
+   |-----flann
+   |-----highgui
+   |-----imgproc
+   |-----legacy
+   |-----ml
+   |-----objdetect
+   |-----ts
+   |-----video
+   |-lib
+   |---Release-iphonesimulator
+   |---debug-iphoneos
+   |---debug-iphonesimulator
+   |---debug-universal
+   |---release-iphoneos
+   |---release-universal
+</code></pre>
+
+<p>Lib folder contains all necessary static libraries, Include - OpenCV headers.</p>
+
+<h2 id="how-it-works">How it works</h2>
+
+<ol>
+<li>Configure OpenCV using CMake. I disabled enabled by default options like SSE, SSE2, support of video input libraries, because they are not actual for iOS</li>
+<li>Run batch build process from command line using xcodebuild tool. With their help we build all necessary libs.</li>
+<li>Copy libraries to appropriate directories and create universal ones.</li>
+<li>Run Install target to get OpenCV headers.</li>
+</ol>
+
+<h2 id="script-source">Script source</h2>
+
+<p>Here is script listing. Don&rsquo;t start copy&amp;pasting it, there are download link at the end of the post.</p>
+
+<pre><code class="language-bash">    #!/bin/bash
+    ################################################################################
+    # This script will create universal binaries for OpenCV library for
+    # iOS-based devices (iPhone, iPad, iPod, etc).
+    # As output you obtain debug/release static libraries and include headers.
+    #
+    # This script was written by Eugene Khvedchenya
+    # And distributed under GPL license
+    # Support site: http://computer-vision-talks.com
+    ################################################################################
+    
+    if [ $# -ne 2 ]
+    then
+        echo &quot;Error in $0 - Invalid Argument Count&quot;
+        echo &quot;Syntax: $0 [OpenCV source directory] [Build destination directory]&quot;
+        echo &quot;If the destination directory already exists, it will be overwritten!&quot;
+        exit
+    fi
+    
+    # Absolute path to the source code directory.
+    D=`dirname &quot;$1&quot;`
+    B=`basename &quot;$1&quot;`
+    SRC=&quot;`cd \&quot;$D\&quot; 2&gt;/dev/null &amp;&amp; pwd || echo \&quot;$D\&quot;`/$B&quot;
+    
+    # Absolute path to the build directory.
+    D=`dirname &quot;$2&quot;`
+    B=`basename &quot;$2&quot;`
+    BUILD=&quot;`cd \&quot;$D\&quot; 2&gt;/dev/null &amp;&amp; pwd || echo \&quot;$D\&quot;`/$B&quot;
+    
+    INTERMEDIATE=$BUILD/tmp
+    IOS_INSTALL_DIR=$INTERMEDIATE/ios-install
+    MAC_INSTALL_DIR=$INTERMEDIATE/mac-install
+    PATCHED_SRC_DIR=$INTERMEDIATE/ios-sources-patched
+    IOS_BUILD_DIR=$INTERMEDIATE/ios-build
+    MAC_BUILD_DIR=$INTERMEDIATE/mac-build
+    
+    echo &quot;OpenCV source   :&quot; $SRC
+    echo &quot;Build directory :&quot; $BUILD
+    echo &quot;Intermediate dir:&quot; $INTERMEDIATE
+    echo &quot;Patched source  :&quot; $PATCHED_SRC_DIR
+    
+    OPENCV_MODULES_TO_BUILD=(zlib libjpeg libpng libtiff libjasper opencv_lapack opencv_calib3d opencv_core opencv_features2d opencv_flann opencv_imgproc opencv_legacy opencv_contrib opencv_ml opencv_objdetect opencv_video)
+    
+    ################################################################################
+    # Clear the old build and recompile the new one.
+    rm -rf $BUILD
+    
+    ################################################################################
+    # Now we build OpenCV with macosx sdk.
+    # This will build opencv INSTALL target, which will
+    # copy headers to the $BUILD/include directory.
+    echo &quot;Installing OpenCV headers&quot;
+    mkdir -p $MAC_BUILD_DIR
+    cd $MAC_BUILD_DIR
+    cmake -DCMAKE_INSTALL_PREFIX=$MAC_INSTALL_DIR \
+    -DENABLE_SSE=NO \
+    -DENABLE_SSE2=NO \
+    -DBUILD_TESTS=OFF \
+    -DBUILD_EXAMPLES=NO \
+    -DBUILD_NEW_PYTHON_SUPPORT=NO \
+    -DWITH_EIGEN2=NO \
+    -DWITH_PVAPI=NO \
+    -DWITH_OPENEXR=NO \
+    -DWITH_QT=NO \
+    -DWITH_QUICKTIME=NO \
+    -DOPENCV_BUILD_3RDPARTY_LIBS=YES \
+    -G Xcode $SRC &gt; /dev/null
+    
+    mkdir $BUILD/include
+    xcodebuild -sdk macosx -configuration Release -parallelizeTargets -target install &gt; /dev/null
+    mv $MAC_INSTALL_DIR/include/* $BUILD/include
+    
+    ################################################################################
+    # We have to patch OpenCV source to exclude several modules form build
+    # because they prevent building other libs.
+    echo &quot;Patching OpenCV sources&quot;
+    mkdir -p $PATCHED_SRC_DIR
+    cp -R $SRC/ $PATCHED_SRC_DIR
+    sed '/add_subdirectory(ts)/d' $PATCHED_SRC_DIR/modules/CMakeLists.txt      &gt; $PATCHED_SRC_DIR/modules/CMakeLists.txt.patched
+    mv $PATCHED_SRC_DIR/modules/CMakeLists.txt.patched                           $PATCHED_SRC_DIR/modules/CMakeLists.txt
+    sed '/add_subdirectory(highgui)/d' $PATCHED_SRC_DIR/modules/CMakeLists.txt &gt; $PATCHED_SRC_DIR/modules/CMakeLists.txt.patched
+    mv $PATCHED_SRC_DIR/modules/CMakeLists.txt.patched                           $PATCHED_SRC_DIR/modules/CMakeLists.txt
+    
+    ################################################################################
+    # Configure OpenCV
+    mkdir -p $IOS_BUILD_DIR
+    cd $IOS_BUILD_DIR
+    
+    cmake -DCMAKE_INSTALL_PREFIX=$IOS_INSTALL_DIR \
+    -DENABLE_SSE=NO \
+    -DENABLE_SSE2=NO \
+    -DBUILD_TESTS=OFF \
+    -DBUILD_SHARED_LIBS=NO \
+    -DBUILD_NEW_PYTHON_SUPPORT=NO \
+    -DBUILD_EXAMPLES=NO \
+    -DWITH_EIGEN2=NO \
+    -DWITH_PVAPI=NO \
+    -DWITH_OPENEXR=NO \
+    -DWITH_QT=NO \
+    -DWITH_QUICKTIME=NO \
+    -DOPENCV_BUILD_3RDPARTY_LIBS=YES \
+    -G Xcode $PATCHED_SRC_DIR &gt; /dev/null
+    
+    ################################################################################
+    # Build for device armv6 architecture :
+    echo &quot;Building iphone release armv6 configuration&quot;
+    for target in ${OPENCV_MODULES_TO_BUILD[*]}
+    do
+    echo &quot;\tbuilding &quot; $target
+    xcodebuild -sdk iphoneos -configuration Release -parallelizeTargets ARCHS=&quot;armv6&quot; -target $target &gt; /dev/null
+    done
+    
+    mkdir -p $BUILD/lib/release-iphoneos-armv6
+    mv $IOS_BUILD_DIR/lib/Release/*.a          $BUILD/lib/release-iphoneos-armv6 &gt; /dev/null
+    mv $IOS_BUILD_DIR/3rdparty/lib/Release/*.a $BUILD/lib/release-iphoneos-armv6 &gt; /dev/null
+    
+    echo &quot;Building iphone debug armv6 configuration&quot;
+    for target in ${OPENCV_MODULES_TO_BUILD[*]}
+    do
+    echo &quot;\tbuilding &quot; $target
+    xcodebuild -sdk iphoneos -configuration Debug -parallelizeTargets   ARCHS=&quot;armv6&quot; -target $target &gt; /dev/null
+    done
+</code></pre>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/tutorials/" rel="tag">tutorials</a></li>
+		<li><a href="/tags/opencv/" rel="tag">opencv</a></li>
+		<li><a href="/tags/xcode/" rel="tag">xcode</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/2011-03-31-image-processing-cloud-computing/" rel="prev"><span>«Previous</span><p>Image processing &amp; cloud computing</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/2011-02-16-introduction-to-morphology-operations-on-images/" rel="next"><span>Next»</span><p>Introduction to morphology operations on images</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/2011-02-25-building-opencv-for-iphone-in-one-click\/';
+    var disqus_title = 'Building OpenCV for iPhone in one click';
+    var disqus_url = '\/post\/2011-02-25-building-opencv-for-iphone-in-one-click\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

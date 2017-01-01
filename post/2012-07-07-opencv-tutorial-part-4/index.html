@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenCV Tutorial - Part 4</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="OpenCV Tutorial - Part 4" />
+<meta property="og:description" content="This is the fourth part of the OpenCV Tutorial. In this part the solution of the annoying iOS video capture orientation bug will be described. Of course that&rsquo;s not all. There are some new features - we will add processing of saved photos from your photo album. Also to introduce minor interface improvements and I&rsquo;ll show you how to disable unsupported API like video capture in your app and run in on iOS Simulator." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/2012-07-07-opencv-tutorial-part-4/" />
+
+
+<meta property="og:updated_time" content="2012-07-07T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">OpenCV Tutorial - Part 4</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2012-07-07 00:00:00 &#43;0000 UTC">July 07, 2012</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			
+
+<p>This is the fourth part of the OpenCV Tutorial. In this part the solution of the annoying iOS video capture orientation bug will be described. Of course that&rsquo;s not all. There are some new features - we will add processing of saved photos from your photo album. Also to introduce minor interface improvements and I&rsquo;ll show you how to disable unsupported API like video capture in your app and run in on iOS Simulator.</p>
+
+<p><span class="more"></span></p>
+
+<h2 id="startup-images">Startup images</h2>
+
+<p>  First of all, i would like to say a great thanks for my friend who made nice startup images for this project. I&rsquo;m really loving them, good graphics make application looks like a pro. Thanks Eugene. By the way, if you looking for free-lance graphic designer - feel free to contact him anytime. So i got a bunch of startup images. With regards to iOS guidelines, to fulfill all possible cases you need 6 different images - two for iPhone (for old one and for retina display) and four for iPad family (in portrait and landscape orientation for both retina and non-retina displays). Assigning them to XCode project was a trivial task - just drag and drop them to project options:</p>
+
+<p><img src="Screen-Shot-2012-07-07-at-10.56.47-AM.png" alt="" title="OpenCV Tutorial icons" /></p>
+
+<h2 id="device-interface-and-video-orientation">Device, Interface and Video orientation</h2>
+
+<p>In the part 3 we created video capture class that use AVFoundation to get raw data from camera capture input. To present our images we introduced GLESImageView class. The motivation was to have fast rendering of bitmaps. But we experienced a problem with video orientation. If we were using AVVideoCapturePreviewLayer then iOS API take care about video/device/interface orientation by itself. But since our choice to use low-level capture API it&rsquo;s our headache. Fortunately, we have to do only one thing - apply the correct rotation for our texture with image with regards to the interface orientation. There is a slight difference between device orientation and interface orientation. The device orientation refers to physical orientation of your device in the world, while interface orientation refers to orientation of UI controls on the screen. To get the current interface orientation you will need an instance of UIViewController object that holds our GLESImageView. We can access interface orientation like this:</p>
+
+<pre><code class="language-objectivec">UIInterfaceOrientation uiOrientation = [viewController interfaceOrientation];
+</code></pre>
+
+<p>To follow SRP we put orientation handling code inside to GLESImageView class. To access the parent view controller from any view you can use following snippet code that i found somewhere on stackoverflow.com: <strong>GLESImageView.mm</strong></p>
+
+<pre><code class="language-objectivec">- (UIViewController *)viewController
+{
+  UIResponder *responder = self;
+  while (![responder isKindOfClass:[UIViewController class]])
+  {
+  responder = [responder nextResponder];
+  if (nil == responder)
+  {
+    break;
+  }
+  }
+
+  return (UIViewController *)responder;
+}
+</code></pre>
+
+<h2 id="camera-frame-orientation">Camera frame orientation</h2>
+
+<p>There is another one kind of orientation - AVCaptureVideoOrientation type. This enum defines the physical orientation of the images captured with particular capture device. The video orientation differs for front and rear cameras. Here is a proof link - <a href="http://developer.apple.com/library/ios/#qa/qa1744/_index.html#//apple_ref/doc/uid/DTS40011134">Technical Q&amp;A QA1744</a>.</p>
+
+<blockquote>
+<p>The iPod touch, iPhone 4 and iPad 2 front facing camera is mounted AVCaptureVideoOrientationLandscapeLeft, and the back-facing camera is mounted AVCaptureVideoOrientationLandscapeRight.</p>
+</blockquote>
+
+<p>Also i draw your attention that AVCaptureVideoDataOutput does not support setting video orientation using API:</p>
+
+<blockquote>
+<p>Currently, the capture outputs for a movie file (AVCaptureMovieFileOutput) and still image (AVCaptureStillImageOutput) support setting the orientation, but the data output for processing video frames (AVCaptureVideoDataOutput) does not.</p>
+</blockquote>
+
+<p>Well, it&rsquo;s not so bat, actually. To handle different orientation of rear and front camera we can use simple flip operation. This brings AVCaptureVideoOrientationLandscapeLeft to AVCaptureVideoOrientationLandscapeRight. We&rsquo;ll use this video orientation as a standard orientation: <strong>VideoSource.mm</strong></p>
+
+<pre><code class="language-objectivec">- (void)captureOutput:(AVCaptureOutput *)captureOutput 
+didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer 
+       fromConnection:(AVCaptureConnection *)connection 
+{ 
+  ... 
+
+  cv::Mat frame(height, width, CV_8UC4, (void*)baseAddress, stride);
+
+  if ([self videoOrientation] == AVCaptureVideoOrientationLandscapeLeft)
+  {
+    cv::flip(frame, frame, 0);
+  }
+
+  ...
+}
+</code></pre>
+
+<p>There is four possible interface orientations - Portrait, PortraitUpsideDown, LandscapeLeft, LandscapeRight. So we can define four sets of texture coordinates that does correct visualization of our bitmap. At every frame we choose right set of texture coordinates with regards to interface orientation. Here is a code that i use: <strong>GLESImageView.mm</strong></p>
+
+<pre><code>- (void)drawFrame:(const cv::Mat&amp;) bgraFrame
+{
+  ...
+
+  GLfloat * textureVertices;
+  static GLfloat textureVerticesPortrait[] =
+  {
+    1, 1,   1, 0,
+    0, 1,   0, 0
+  };  
+
+  static GLfloat textureVerticesPortraitUpsideDown[] =
+  {
+    0, 0,   0, 1,
+    1, 0,   1, 1
+  };
+
+  static GLfloat textureVerticesLandscapeLeft[] =
+  {
+    1, 0,   0, 0,
+    1, 1,   0, 1
+  };  
+
+  static GLfloat textureVerticesLandscapeRight[] =
+  {
+    0, 1,   1, 1,
+    0, 0,   1, 0
+  }; 
+
+  switch (uiOrientation)
+  {
+    case UIInterfaceOrientationPortrait:
+      textureVertices = textureVerticesPortrait;
+      break;
+
+    case UIInterfaceOrientationPortraitUpsideDown:
+      textureVertices = textureVerticesPortraitUpsideDown;
+      break;
+
+    case UIInterfaceOrientationLandscapeLeft:
+      textureVertices = textureVerticesLandscapeLeft;
+      break;
+
+    case UIInterfaceOrientationLandscapeRight:
+    default:
+      textureVertices = textureVerticesLandscapeRight;
+      break;
+  };
+    ...
+}
+</code></pre>
+
+<p>Using this we select correct texture coordinates. The rest of drawing code left without changes. Great, now it seems that video looks correct at every orientation. Cool! Let&rsquo;s move on.</p>
+
+<h2 id="processing-saved-photos">Processing saved photos</h2>
+
+<p>Although processing video frames in real-time is awesome by itself, i though that adding a possibility to process a saved picture is also worth to be implemented. All the more so it&rsquo;s easier to implement than video processing. As usual, we start from creating a new ImageViewController class. Our view will contains UIImageView control to present processed result on the View. Like the VideoViewController, our class also requires a SampleBase object and input image to process.</p>
+
+<p><img src="Screen-Shot-2012-07-07-at-11.14.25-AM.png" alt="" title="Edge detection of saved photo" /></p>
+
+<p>This is how it looks. Two buttons in the top right corner is action buttons - the &ldquo;Save&rdquo; button puts a processed image to a saved photos album, the second button with camera picture - allows you to select another one image for processing.</p>
+
+<p><strong>ImageViewController.h</strong></p>
+
+<pre><code class="language-objectivec">@interface ImageViewController : UIViewController 
+
+- (void) setSample:(SampleBase*) sample;
+- (void) setImage:(UIImage*) image;
+
+@property (weak, nonatomic) IBOutlet UIImageView *imageView;
+
+@end
+</code></pre>
+
+<p><strong>ImageViewController.mm</strong></p>
+
+<pre><code class="language-objectivec">- (void)viewDidLoad
+{
+  [super viewDidLoad];
+  // Do any additional setup after loading the view.
+  self.navigationItem.rightBarButtonItems = [NSArray arrayWithObjects:
+</code></pre>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/opencv/" rel="tag">opencv</a></li>
+		<li><a href="/tags/xcode/" rel="tag">xcode</a></li>
+		<li><a href="/tags/tutorials/" rel="tag">tutorials</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/2012-07-14-opencv-tutorial-part-5/" rel="prev"><span>«Previous</span><p>OpenCV Tutorial - Part 5</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/2012-06-27-opencv-tutorial-part-3/" rel="next"><span>Next»</span><p>OpenCV Tutorial - Part 3</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/2012-07-07-opencv-tutorial-part-4\/';
+    var disqus_title = 'OpenCV Tutorial - Part 4';
+    var disqus_url = '\/post\/2012-07-07-opencv-tutorial-part-4\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

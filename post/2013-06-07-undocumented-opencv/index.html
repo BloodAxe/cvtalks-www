@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Undocumented OpenCV</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="Undocumented OpenCV" />
+<meta property="og:description" content="OpenCV library is widely used by computer vision engineers across the world. It contains almost all algorithms you may want for R&amp;D or product development. It has production-ready build farm with tests and strong community that give nice feedbacks and discover errors. But nevertheless OpenCV has some strange issues and undocummented behaviour that can surprise you as minimum and crash your app as maximum.
+
+How to get diagonal matrix in OpenCV A typical parameter update computation in non-linear optimization using Levenber-Marquardt algorithm looks like this:" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/2013-06-07-undocumented-opencv/" />
+
+
+<meta property="og:updated_time" content="2013-06-07T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">Undocumented OpenCV</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2013-06-07 00:00:00 &#43;0000 UTC">June 07, 2013</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			
+
+<p>OpenCV library is widely used by computer vision engineers across the world. It contains almost all algorithms you may want for R&amp;D or product development. It has production-ready build farm with tests and strong community that give nice feedbacks and discover errors. But nevertheless OpenCV has some strange issues and undocummented behaviour that can surprise you as minimum and crash your app as maximum.</p>
+
+<p><span class="more"></span></p>
+
+<h2 id="how-to-get-diagonal-matrix-in-opencv">How to get diagonal matrix in OpenCV</h2>
+
+<p>A typical parameter update computation in non-linear optimization using Levenber-Marquardt algorithm looks like this:</p>
+
+<pre><code class="language-cpp">cv::Mat JtJ = J.t() * J;
+x = (JtJ + lambda * JtJ.diag() ).inv(cv::DECOMP_SVD) * (J.t() * I);
+</code></pre>
+
+<p>So &lsquo;JtJ&rsquo; is a square matrix and i want to get the diagonal matrix from it. Seems correct. But hey, <strong>the member-function diag() does not return diagonal matrix</strong>! It returns a vector of diagonal elements. Really? Fine. There is a static member-function diag(), maybe it can help?</p>
+
+<pre><code class="language-cpp">x = (JtJ + lambda * cv::Mat::diag(JtJ)).inv(cv::DECOMP_SVD) * (J.t() * I);
+</code></pre>
+
+<p>Unfortunately, this is also wrong because this <strong>diag()</strong> constructs a diagonal matrix from a vector! So the correct solution to create a diagonal matrix in OpenCV is to use both diag&rsquo;s:</p>
+
+<pre><code class="language-cpp">cv::Mat d = cv::Mat::diag( m.diag() );
+</code></pre>
+
+<p>And the correct Lev-Mar update will have the following look:</p>
+
+<pre><code class="language-cpp">x = (JtJ + lambda * cv::Mat::diag(JtJ.diag())).inv(cv::DECOMP_SVD) * (J.t() * I);
+</code></pre>
+
+<h2 id="how-to-increase-speed-of-optical-flow-klt-in-opencv">How to increase speed of optical flow (KLT) in OpenCV</h2>
+
+<p>If you were using OpenCV version 1.x you should remeber there was a cvCalcOpticalFlowPyrLK function that allowed to pass image pyramids. The motivation to use precomputed image pyramids is performance gain. When you continuously tracking video frames you can save time by storing built pyramid from current frame.</p>
+
+<p>The C++ API provide the following function prototype for this:</p>
+
+<pre><code class="language-cpp">//! computes sparse optical flow using multi-scale Lucas-Kanade algorithm
+CV_EXPORTS_W void calcOpticalFlowPyrLK( InputArray prevImg, InputArray nextImg,
+                                        InputArray prevPts, InputOutputArray nextPts,
+                                        OutputArray status, OutputArray err,
+                                        Size winSize = Size(21,21), int maxLevel = 3,
+                                        TermCriteria criteria,
+                                        int flags, double minEigThreshold);
+</code></pre>
+
+<p>From the function declaration and <a href="http://docs.opencv.org/modules/video/doc/motion_analysis_and_object_tracking.html&amp;usg=AFQjCNGCeanEXmqKq5DU7dpbp1m2xo0lPA">documentation</a> it&rsquo;s visible that <em>prevImg</em> and <em>nextImg</em> are arguments for previous and next image buffers. Does it mean that you can&rsquo;t use prebuilt pyramids? No! This is not documented, but you can precompute image pyramid using <strong>cv::buildOpticalFlowPyramid</strong> like this:</p>
+
+<pre><code class="language-cpp">std::vector&lt;cv::mat&gt; prevPyr, nextPyr;
+
+// prevPyr assumed to be already initialized 
+cv::buildOpticalFlowPyramid(nextFrame, nextPyr, winSize, maxLevel, true);
+cv::calcOpticalFlowPyrLK(prevPyr, nextPyr, prevPts, nextPts, status, err, winSize, maxLevel);
+prevPyr.swap(nextPyr);
+</code></pre>
+
+<p>On my PC this trick increased performance of KLT almost twice!</p>
+
+<h2 id="cv-findhomography-can-return-empty-result">cv::findHomography can return empty result</h2>
+
+<p>The documentation of cv::findHomography does not state it, but return value of cv::findHomography was always 3x3 matrix of CV_64FC1 type. Starting from approximately 2.4.5 release <strong>cv::findHomography can return empty matrix in some cases</strong>. This seems happen only when cv::RANSAC flag is passed. This <a href="http://code.opencv.org/issues/3057">issue</a> has been reported but i suggest to check the computed homography before using it anywhere:</p>
+
+<pre><code class="language-cpp">cv::Mat h = cv::findHomography(....)
+if (!h.empty())
+{
+    // Use it
+}
+</code></pre>
+
+<h2 id="summary">Summary</h2>
+
+<p>That&rsquo;s all for now. I hope you enjoy working with OpenCV like i do. This post will be updated with new &ldquo;easter-eggs&rdquo;. Feel free to share you own discoveries.</p>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/opencv/" rel="tag">opencv</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/2013-06-17-kaze-1-5-1/" rel="prev"><span>«Previous</span><p>KAZE 1.5.1</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/2013-03-17-porting-kaze-features-to-opencv/" rel="next"><span>Next»</span><p>Porting KAZE features to OpenCV</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/2013-06-07-undocumented-opencv\/';
+    var disqus_title = 'Undocumented OpenCV';
+    var disqus_url = '\/post\/2013-06-07-undocumented-opencv\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

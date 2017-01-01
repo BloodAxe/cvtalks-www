@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapping data from Eigen to OpenCV and back</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="Mapping data from Eigen to OpenCV and back" />
+<meta property="og:description" content="![Eigen2CV](eigen2cv.png)  Eigen is a C&#43;&#43; template library for matrix and vector operations. It is highly optimized for numeric operations and support vectorization and use aligned memory allocators.
+When it comes to matrix operations, Eigen is much faster than OpenCV. However, it can be situations when it is necessary to pass Eigen data to OpenCV functions.
+In this post I will show how to map Eigen data to OpenCV with easy and efficient way." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/mapping-eigen-to-opencv/" />
+
+
+<meta property="og:updated_time" content="2014-08-16T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">Mapping data from Eigen to OpenCV and back</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2014-08-16 00:00:00 &#43;0000 UTC">August 16, 2014</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			
+
+<div class="featured-image">
+![Eigen2CV](eigen2cv.png)
+</div>
+
+<p>Eigen is a C++ template library for matrix and vector operations.
+It is highly optimized for numeric operations and support vectorization and
+use aligned memory allocators.</p>
+
+<p>When it comes to matrix operations, Eigen is much faster than OpenCV.
+However, it can be situations when it is necessary to pass Eigen data
+to OpenCV functions.</p>
+
+<p>In this post I will show how to map Eigen data to OpenCV with easy and efficient
+way. No copy, minimal overhead and maximum syntax sugar:
+<div class="clearfix"></div></p>
+
+<p><strong>Simple case</strong></p>
+
+<pre><code class="language-cpp">Eigen::ArrayXXd img(480, 640);
+...
+cv::imshow(&quot;test&quot;, eigen2cv(img));
+</code></pre>
+
+<p>Proposed approach does not limited to continuous memory layout - it support expression and blocks
+as well. If given expression has to be evaluated - it will be evaluated into temporary dense storage
+and then mapped to OpenCV structure:</p>
+
+<p><strong>Expressions</strong></p>
+
+<pre><code class="language-cpp">// Unsharp mask
+Eigen::ArrayXXd img, blur;    
+cv::GaussianBlur(eigen2cv(img), eigen2cv(blur));
+
+cv::imshow(&quot;sharpened&quot;, eigen2cv(1.5 * img - 0.5 * blur));
+</code></pre>
+
+<p><span class="more" /></p>
+
+<h2 id="idea">Idea</h2>
+
+<p>In fact, Eigen heavily use <a href="#1">C++ templates magic</a> to create expression structures with delayed evaluation and <a href="#2">type traits</a> to detect type of derived objects in compile time.
+This approach gives compiler a lot of hints on actual data layout which helps to generate more efficient code.
+The drawback of this - if you want to deep dive in Eigen internals be prepared to hardcore.</p>
+
+<p>I will use templates as well. We will have template class <code>Eigen2CV</code> and several specializations of this class - for planar types, for blocks, for expression and so on&hellip;
+In addition we will specialize this class with mutable specification which will
+let us to define <u>at compile time</u> whether mapped object is allowed for writing or not. Awesome.</p>
+
+<pre><code class="language-cpp">template&lt;
+    typename Derived, 
+    typename Base, 
+    typename ConstPolicy, 
+    typename StorageKind = typename Eigen::internal::traits&lt;Derived&gt;::StorageKind 
+    &gt;
+class Eigen2CV;
+</code></pre>
+
+<p>To interact with OpenCV, we can declare implicit conversion operators for <code>cv::Mat</code>, <code>cv::InputArray</code> and <code>cv::OutputArray</code>.
+Some of the mapped objects can have read/write access while the rest  - read-only.
+Therefore we will introduce the base class <code>Eigen2CVBase</code> to provide a &ldquo;read-only&rdquo; access for all derived objects.</p>
+
+<pre><code class="language-cpp">class Eigen2CVBase
+{
+public:
+    
+    operator cv::Mat() const
+    {
+        return mBody;
+    }
+    
+    operator cv::_InputArray() const
+    {
+        return cv::_InputArray(mBody);
+    }
+    
+protected:
+    
+    template&lt;typename Derived&gt;
+    void mapPlaneMemory(const Derived&amp; src)
+    {
+        const bool isRowMajor = int(Derived::Flags) &amp; Eigen::RowMajorBit;
+        const int stride = src.outerStride() * sizeof(typename Derived::Scalar);
+        
+        if (isRowMajor)
+            this-&gt;mapPlaneMemoryRowMajor(src.data(),
+                                         src.rows(),
+                                         src.cols(),
+                                         stride);
+        else
+            this-&gt;mapPlaneMemoryColMajor(src.data(),
+                                         src.rows(),
+                                         src.cols(),
+                                         stride);
+    }
+
+    template &lt;typename Scalar&gt;
+    void mapPlaneMemoryRowMajor(const Scalar* planeData, int rows, int cols, int stride)
+    {
+        this-&gt;mBody = cv::Mat(rows, 
+                              cols, 
+                              opencv_matrix&lt;Scalar&gt;::type, 
+                              const_cast&lt;Scalar*&gt;(planeData), 
+                              stride);
+    }
+    
+    template &lt;typename Scalar&gt;
+    void mapPlaneMemoryColMajor(const Scalar* planeData, int rows, int cols, int stride)
+    {
+        this-&gt;mBody = cv::Mat(cols, 
+                              rows, 
+                              opencv_matrix&lt;Scalar&gt;::type, 
+                              const_cast&lt;Scalar*&gt;(planeData), 
+                              stride);
+    }
+
+    template &lt;typename Derived, typename T&gt;
+    void assignMatrix(Eigen::DenseBase&lt;Derived&gt;&amp; dst, const cv::Mat_&lt;T&gt;&amp; src)
+    {
+        typedef typename Derived::Scalar Scalar;
+        typedef Eigen::Matrix&lt;T, 
+                              Eigen::Dynamic, 
+                              Eigen::Dynamic, 
+                              Eigen::RowMajor&gt; PlainMatrixType;
+        
+        dst = Eigen::Map&lt;PlainMatrixType&gt;((T*)src.data, 
+                                          src.rows, 
+                                          src.cols).
+                                          template cast&lt;Scalar&gt;();
+    }
+    
+    cv::Mat mBody;
+};
+</code></pre>
+
+<p>For those Eigen types that allows read/write access, we will have additional conversion operator to cv::OutputArray. By default all derived types will have read-only access.</p>
+
+<h2 id="mapping-eigen-plain-objects">Mapping Eigen plain objects</h2>
+
+<p>Let&rsquo;s start from mapping continuous block of memory represented by <code>Eigen::Matrix</code> of <code>Eigen::Array</code>.
+These two classes derives from <code>Eigen::PlainObjectBase</code> class which provides methods to access internal storage
+buffer.</p>
+
+<pre><code class="language-cpp">template&lt;typename Derived&gt;
+class Eigen2CV&lt;
+    Derived, 
+    Eigen::PlainObjectBase&lt;Derived&gt;, 
+    details::Const&gt; : public Eigen2CVBase
+{
+public:
+    
+    typedef typename Derived::Scalar Scalar;
+    typedef Eigen2CV&lt;Derived, Eigen::PlainObjectBase&lt;Derived&gt;, details::Mutable&gt; Self;
+    
+    Eigen2CV(const Eigen::PlainObjectBase&lt;Derived&gt;&amp; src)
+    : mMappedView(src)
+    {
+        this-&gt;mapPlaneMemory(mMappedView);
+    }
+           
+private:
+    const Eigen::PlainObjectBase&lt;Derived&gt;&amp; mMappedView;
+};
+</code></pre>
+
+<p>This is <code>Eigen2CV</code> specialization for constant <code>Eigen::PlainObjectBase</code> object. This specialization of <code>Eigen2CV</code> can return constant reference to <code>cv::Mat</code> and <code>cv::InputArray</code>.</p>
+
+<p>Now we can write two overloads of <code>eigen2cv</code> function for <code>Eigen::Matrix</code> and <code>Eigen::Array</code>. The goal of <code>eigen2cv</code> is simple - take an argument and create &lsquo;right&rsquo; Eigen2CV&lt;&hellip;&gt; mapper.
+Here is how it looks like for planar data:</p>
+
+<pre><code class="language-cpp">template&lt;typename E&gt;
+Eigen2CV&lt;E, Eigen::PlainObjectBase&lt;E&gt;, details::Mutable&gt; 
+eigen2cv(Eigen::PlainObjectBase&lt;E&gt;&amp; src) 
+{
+    return Eigen2CV&lt;E, 
+                    Eigen::PlainObjectBase&lt;E&gt;, 
+                    details::Mutable
+                    &gt;(src));
+}
+
+template&lt;typename E&gt;
+Eigen2CV&lt;E, Eigen::PlainObjectBase&lt;E&gt;, details::Const&gt;
+eigen2cv(const Eigen::PlainObjectBase&lt;E&gt;&amp; src) 
+{
+    return Eigen2CV&lt;E, 
+                    Eigen::PlainObjectBase&lt;E&gt;, 
+                    details::Const
+                    &gt;(src);
+}  
+</code></pre>
+
+<p>I want to draw your attention to how elegant C++ allows us to distinct mutable and constant objects.
+Compiler will choose right function depending on the context of <code>src</code>.
+In case of access right conflicts you will get compile-time error.</p>
+
+<h2 id="assigning-opencv-matrix-to-eigen-object">Assigning OpenCV matrix to Eigen object</h2>
+
+<p>What if someone write:</p>
+
+<pre><code class="language-cpp">eigen2cv(a) = cv::imread(&quot;lena.jpg&quot;, cv::IMREAD_GRAYSCALE);
+</code></pre>
+
+<p>Well, it&rsquo;s legal and I see no problems with this code while we follow few restrictions:
+1. <code>data</code> has dynamic size or fixed one which match cv::Mat size.
+2. Image is single channel - there is no way to map multi-channel images to Eigen now.</p>
+
+<p>Assignment operator is also quite simple:</p>
+
+<pre><code class="language-cpp">template &lt;typename T&gt;
+Self&amp; operator=(const cv::Mat_&lt;T&gt;&amp; src)
+{
+    assignMatrix&lt;Derived, T&gt;(mMappedView, src);
+    return *this;
+}
+
+/**
+ * @brief Assignment operator to copy OpenCV Mat data to mapped Eigen object.
+ */
+Self&amp; operator= (const cv::Mat&amp; m)
+{
+    switch (m.type())
+    {
+        case CV_8U:  return *this = (cv::Mat_&lt;uint8_t&gt;)m;
+        case CV_16U: return *this = (cv::Mat_&lt;uint16_t&gt;)m;
+        case CV_16S: return *this = (cv::Mat_&lt;int16_t&gt;)m;
+        case CV_32S: return *this = (cv::Mat_&lt;int32_t&gt;)m;
+        case CV_32F: return *this = (cv::Mat_&lt;float&gt;)m;
+        case CV_64F: return *this = (cv::Mat_&lt;double&gt;)m;
+        default:
+            throw std::runtime_error(&quot;Unsupported OpenCV matrix type&quot;);
+    };
+}
+</code></pre>
+
+<h2 id="mapping-eigen-expressions">Mapping Eigen expressions</h2>
+
+<p>Dealing with expressions is not much harder.
+Depending on the expression type, we must either evaluate it into dense storage (when it&rsquo;s real expression like <code>AX + B</code>, or <code>cast&lt;float&gt;()</code>)
+or use underlying storage with regards to expression operator (<code>block()</code>, <code>transpose()</code>, <code>array()</code>, <code>matrix()</code>).
+We will get to mapping blocks in a next section.</p>
+
+<p>Let&rsquo;s map expression that require evaluation first. For the sake of simplicity,
+I will not implement write expressions, e.g expressions that require eval/update/write-back.
+Eigen2CV will be able map Eigen expressions in read-only mode.
+And here&rsquo;s how:</p>
+
+<pre><code class="language-cpp">template&lt;typename Derived&gt;
+class Eigen2CV&lt;Derived, Eigen::EigenBase&lt;Derived&gt;, details::Const&gt; : public Eigen2CVBase
+{
+public:
+    typedef typename Derived::Scalar Scalar;
+    typedef typename Eigen::internal::plain_matrix_type&lt;Derived&gt;::type StorageType;
+
+    Eigen2CV(const Eigen::EigenBase&lt;Derived&gt;&amp; src)
+    {
+        mStorage = src; // All magic happens here
+        this-&gt;mapPlaneMemory(mStorage);
+    }
+
+protected:
+
+    void mapPlaneMemory(StorageType&amp; src)
+    {
+        if ( ( StorageType::Options &amp; Eigen::RowMajor) == Eigen::RowMajor)
+            this-&gt;mapPlaneMemoryRowMajor(src.data(), 
+                                         src.rows(), 
+                                         src.cols(), 
+                                         src.outerStride() * sizeof(Scalar));
+        else
+            this-&gt;mapPlaneMemoryColMajor(src.data(), 
+                                         src.rows(), 
+                                         src.cols(), 
+                                         src.outerStride() * sizeof(Scalar));
+    }
+
+private:
+    StorageType mStorage;
+};
+</code></pre>
+
+<p>For the first look, it is almost the same as specialization for planar data types. A few differences make this specialization very other one.
+First, <code>Eigen::internal::plain_matrix_type&lt;Derived&gt;::type</code> type trait helps us to infer type of dense storage for given expression.
+Second, line <code>mStorage = src</code> looks really simple right? But hold on, <code>src</code> is an expression, and <code>mStorage</code> is dense matrix.
+Assignment operator makes our like much easier by performing evaluation step inside this assignment.</p>
+
+<p>And here is <code>eigen2cv</code> overload for Eigen expressions:</p>
+
+<pre><code class="language-cpp">template&lt;typename E&gt;
+Eigen2CV&lt;E, Eigen::EigenBase&lt;E&gt;, details::Const&gt;
+eigen2cv(const Eigen::EigenBase&lt;E&gt;&amp; src) 
+{
+    return Eigen2CV&lt;E, 
+                    Eigen::EigenBase&lt;E&gt;, 
+                    details::Const
+                    &gt;(src);
+}
+</code></pre>
+
+<h2 id="mapping-eigen-views">Mapping Eigen views</h2>
+
+<p>User can create sub-view for the Eigen storage using <code>block()</code>.
+Eigen block create view that points to the same memory region, but has different size and stride.
+Blocks can be read and written.</p>
+
+<pre><code class="language-cpp">template&lt;typename Derived&gt;
+class Eigen2CV&lt;Derived, 
+               Eigen::Block&lt;Derived&gt;, 
+               details::Mutable, 
+               Eigen::Dense&gt; : public Eigen2CVBase
+{
+public:
+    typename Derived::Scalar Scalar;
+    typedef Eigen2CV&lt;Derived, Eigen::Block&lt;Derived&gt;, details::Mutable&gt; Self;
+
+    Eigen2CV(const Eigen::Block&lt;Derived&gt;&amp; src)
+        : mMappedView(src)
+    {
+        this-&gt;mapPlaneMemory(mMappedView);
+    }
+    
+    operator cv::_OutputArray()
+    {
+        return cv::_OutputArray(this-&gt;mBody);
+    }
+    
+    template &lt;typename T&gt;
+    Self&amp; operator=(const cv::Mat_&lt;T&gt;&amp; src)
+    {
+        MatrixAssign&lt;Derived, T&gt;(mMappedView, src);
+        return *this;
+    }
+    
+    /**
+     * @brief Assignment operator to copy OpenCV Mat data to mapped Eigen object.
+     */
+    Self&amp; operator= (const cv::Mat&amp; m) throw ()
+    {
+        switch (m.type())
+        {
+            case CV_8U:  return *this = (cv::Mat_&lt;uint8_t&gt;)m;
+            case CV_16U: return *this = (cv::Mat_&lt;uint16_t&gt;)m;
+            case CV_16S: return *this = (cv::Mat_&lt;int16_t&gt;)m;
+            case CV_32S: return *this = (cv::Mat_&lt;int32_t&gt;)m;
+            case CV_32F: return *this = (cv::Mat_&lt;float&gt;)m;
+            case CV_64F: return *this = (cv::Mat_&lt;double&gt;)m;
+            default:
+                throw std::runtime_error(&quot;Unsupported OpenCV matrix type&quot;);
+        };
+    }
+    
+private:
+    const Eigen::Block&lt;Derived&gt;&amp; mMappedView;
+};
+
+template&lt;typename E&gt;
+Eigen2CV&lt;E, Eigen::Block&lt;E&gt;, details::Mutable&gt;
+eigen2cv(const Eigen::Block&lt;E&gt;&amp; src)
+{
+    return Eigen2CV&lt;E, 
+                    Eigen::Block&lt;E&gt;, 
+                    details::Mutable
+                    &gt;(src);
+}
+</code></pre>
+
+<h2 id="eigen-memory-organization">Eigen memory organization</h2>
+
+<p>Eigen can use column-major or row-major ordering of internal data storage.
+By default it&rsquo;s column-major, but OpenCV use row-major ordering.</p>
+
+<p class="info info-warning">
+<span class="label label-info">Notice</span>
+This mapping implementation will NOT convert underlying Eigen memory to meet OpenCV convention. 
+For column-major order of Eigen data type this will lead to transposed matrices in OpenCV. 
+</p>
+
+<h2 id="demonstration">Demonstration</h2>
+
+<pre><code class="language-cpp">Image8u_t a(512, 512); // Eigen::Matrix&lt;uint8_t, Dynamic, Dynamic&gt;
+
+for (size_t i = 0; i &lt; 512; i++)
+{
+    for (size_t j = 0; j &lt; 512; j++)
+    {
+        a(i,j) = 255.0f * (sin(0.04f * i) * sin(0.04f * i) + 
+                           cos(0.04f * j) * cos(0.04f * j));
+    }
+}
+
+cv::GaussianBlur(eigen2cv(a.block(128, 128, 256, 256)),
+                 eigen2cv(a.block(128, 128, 256, 256)), cv::Size(25,25), 0);
+cv::imshow(&quot;Blur image region&quot;, eigen2cv(a));
+</code></pre>
+
+<p><img src="blur_roi.png" alt="Blur image region" /></p>
+
+<h2 id="source-code">Source code</h2>
+
+<p>Source code for this post can be found on GitHub: <a href="https://gist.github.com/BloodAxe/c94d65d5977fb1d3e53f">Eigen2CV.h</a>.</p>
+
+<p>License: <a href="https://tldrlegal.com/license/bsd-3-clause-license-(revised)#summary">BSD-3</a>.</p>
+
+<h2 id="references">References</h2>
+
+<p><a name="#1" /></p>
+
+<ol>
+<li><a href="http://www.amazon.com/gp/product/0201704315/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=0201704315&linkCode=as2&tag=compvisitalk-20&linkId=2ZA2JDQNEDOQJZFL">Modern C++ Design: Generic Programming and Design Patterns Applied</a><img src="http://ir-na.amazon-adsystem.com/e/ir?t=compvisitalk-20&l=as2&o=1&a=0201704315" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" /></li>
+</ol>
+
+<p><a name="#2" />
+2. <a href="http://www.drdobbs.com/cpp/c-type-traits/184404270">http://www.drdobbs.com/cpp/c-type-traits/184404270</a></p>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/opencv/" rel="tag">opencv</a></li>
+		<li><a href="/tags/tutorials/" rel="tag">tutorials</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/computer-vision-digest-august-2014/" rel="prev"><span>«Previous</span><p>Computer Vision Digest - August 2014</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/pyimagesearch.com/" rel="next"><span>Next»</span><p>A good resource on image processing using Python</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/mapping-eigen-to-opencv\/';
+    var disqus_title = 'Mapping data from Eigen to OpenCV and back';
+    var disqus_url = '\/post\/mapping-eigen-to-opencv\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

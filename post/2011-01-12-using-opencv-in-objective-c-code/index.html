@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Using OpenCV in Objective-C code</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="Using OpenCV in Objective-C code" />
+<meta property="og:description" content="After publishing Building OpenCV for iOS article many of readers asked me how to use OpenCV within ObjectiveC code, because they encountered compilation errors. In this post I&rsquo;ll show you how to use OpenCV and ObjectiveC to make some image processing.
+
+This post is outdated
+ Current version of OpenCV supports iOS toolchain and can be build in much easier way. You are welcome to read this post for educational purposes." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/2011-01-12-using-opencv-in-objective-c-code/" />
+
+
+<meta property="og:updated_time" content="2011-01-12T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">Using OpenCV in Objective-C code</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2011-01-12 00:00:00 &#43;0000 UTC">January 12, 2011</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			<p>After publishing <a href="http://computer-vision-talks.com/2010/12/building-opencv-for-ios/">Building OpenCV for iOS</a> article many of readers asked me how to use OpenCV within ObjectiveC code, because they encountered compilation errors. In this post I&rsquo;ll show you how to use OpenCV and ObjectiveC to make some image processing.</p>
+
+<p><span class="more"></span></p>
+
+<div class="alert alert-danger">
+    <p class="lead">This post is outdated</p>
+    <p>
+    Current version of OpenCV supports iOS toolchain and can be build in much easier way. You are welcome to read this post for educational purposes. It's 99.9% chance that you will not be able to use OpenCV as described here. Please use my <a href="https://github.com/BloodAxe/OpenCV-Tutorial"><strong>OpenCV Tutorial project</strong></a> if you want to learn how to use OpenCV on iOS platform.
+    </p>
+</div>
+
+<div class="alert alert-info">
+    <p class="lead">
+    Please use my <a href="https://github.com/BloodAxe/OpenCV-Tutorial"><strong>OpenCV Tutorial project</strong></a> if you want to learn how to use OpenCV on iOS platform.
+    </p>
+</div>
+
+<p>In this post I&rsquo;ll use <a href="https://developer.apple.com/library/ios/#samplecode/GLImageProcessing/Introduction/Intro.html">GLImageProcessing</a> sample demo from Apple. Also you will need precompiled OpenCV for iPhone. How to make it read <a href="http://computer-vision-talks.com/2010/12/building-opencv-for-ios/">here</a>. I&rsquo;ve copied all OpenCV stuff to &ldquo;opencv&rdquo; folder into the GLImageProcessing. Here is project directory structure:</p>
+
+<p><img src="example-directory-structure_thumb.jpg" alt="example-directory-structure" title="example-directory-structure" /></p>
+
+<p>Now, let&rsquo;s add OpenCV to our project. **First step - **specify the place, where the OpenCV headers are located. Add the path to OpenCV headers to the “Header Search Paths” property:</p>
+
+<p><img src="opencv-include-headers_thumb.jpg" alt="opencv-include-headers" title="opencv-include-headers" /></p>
+
+<p><strong>Second step</strong> - set up path where the OpenCV libraries are. Please note: you will need to repeat this step for each configuration (debug/release, device/simulator) because of directory structure of the OpenCV libs. Add path of the OpenCV libraries to the “Library Search Paths” property (for release device this will be “opencv/lib/iphoneos/Release” if you follow directory structure listed above). <strong>Third step</strong>: Tell linker to include OpenCV to the output executable:</p>
+
+<p><img src="opencv-link-libraries_thumb.jpg" alt="opencv-link-libraries" title="opencv-link-libraries" /></p>
+
+<p>As you can see i prefer use linker flags instead using XCode UI (Targets -&gt; GLImageProcessing -&gt; Link Binary With Libraries -&gt; Add -&gt; Existing Files&hellip;). There are several reasons: i prefer this way because i don&rsquo;t trust XCode :) (Actually because for all my projects i use cross-platform build system which allows to do such things much easies, but this is a topic for another article). Now, add #include <opencv2/opencv.hpp> to header files . I’ve added this include to Imaging.h header right after #include <OpenGLES/ES1/glext.h>. Crossing fingers and hitting &ldquo;Build and Run&rdquo;&hellip;..Oooops, compilation errors. Let&rsquo;s see, what we can do with all those errors. First of all - <strong>change extensions of all .m files which include OpenCV headers to .mm</strong>. This tells compiler that such file contains mixed ObjectiveC and C++ code. Also change extensions of all .c files to .cpp, because OpenCV uses STL, which is absent for pure C and thus you&rsquo;ll get compilation errors. Now, only one compilation error left:</p>
+
+<pre><code>    opencv/include/opencv2/core/core.hpp:432: error: statement-expressions are allowed only inside functions
+    opencv/include/opencv2/core/core.hpp:432: confused by earlier errors, bailing out
+</code></pre>
+
+<p>These errors are caused by MIN symbol, which is a macro in OpenCV and a function, defined somewhere in UIKit or other frameworks..Simple solution - <strong>include OpenCV before iOS frameworks</strong>. So&hellip;with all these fixes all builds fine. Now it&rsquo;s time to add some OpenCV code.. Let&rsquo;s change the matrix multiplication code! File Imaging.cpp</p>
+
+<pre><code class="language-cpp">    // Matrix Utilities for Hue rotation
+    static void matrixmult(float a[4][4], float b[4][4], float c[4][4])
+    {
+    int x, y;
+    float temp[4][4];
+    for(y=0; y&lt;4; y++)
+    	for(x=0; x&lt;4; x++)
+    		temp[y][x] = b[y][0] * a[0][x] +
+    			     b[y][1] * a[1][x] +
+                                 b[y][2] * a[2][x] +
+                                 b[y][3] * a[3][x];
+    for(y=0; y&lt;4; y++)
+    	for(x=0; x&lt;4; x++)
+    		c[y][x] = temp[y][x];
+    }
+</code></pre>
+
+<p>A little crappy code, isn&rsquo;t it? Let&rsquo;s rewrite it!</p>
+
+<pre><code class="language-cpp">    // Matrix Utilities for Hue rotation
+    static void matrixmult(float a[4][4], float b[4][4], float c[4][4])
+    {
+    	cv::Mat(4,4,CV_32FC1, c) = cv::Mat(4,4,CV_32FC1, a) * cv::Mat(4,4,CV_32FC1,b);
+    }
+</code></pre>
+
+<p>A bit of comments. cv::Mat is a type of OpenCV matrix. We initialize a matrix view, which takes data from the float<a href="opencv-include-headers_thumb.jpg" title="opencv-include-headers">4</a> array, but not copy it. Result of multiplication of two views (a and b) assigned to view c which is a result. Hit &ldquo;Build and Run&rdquo;, and here we go:</p>
+
+<p><img src="Screenshot-2011.01.12-11.11.45_thumb.png" alt="Screenshot 2011.01.12 11.11.45" title="Screenshot 2011.01.12 11.11.45" /></p>
+
+<p>This is a very simple example which demonstrates that you can use OpenCV even with ObjectiveC without any problems. Good luck in your projects!</p>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/opencv/" rel="tag">opencv</a></li>
+		<li><a href="/tags/xcode/" rel="tag">xcode</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/2011-01-15-feature-descriptors-a-new-approach/" rel="prev"><span>«Previous</span><p>Feature descriptors: A new approach</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/2011-01-04-comparison-of-the-opencv-feature-detection-algorithms/" rel="next"><span>Next»</span><p>Comparison of the OpenCV’s feature detection algorithms</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/2011-01-12-using-opencv-in-objective-c-code\/';
+    var disqus_title = 'Using OpenCV in Objective-C code';
+    var disqus_url = '\/post\/2011-01-12-using-opencv-in-objective-c-code\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud image processing using OpenCV and Node.js</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="Cloud image processing using OpenCV and Node.js" />
+<meta property="og:description" content="This article describe how to build and use OpenCV in a cloud environment with a front-end in node.js" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/2013-08-19-cloud-image-processing-using-opencv-and-node-js/" />
+
+
+<meta property="og:updated_time" content="2013-08-19T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">Cloud image processing using OpenCV and Node.js</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2013-08-19 00:00:00 &#43;0000 UTC">August 19, 2013</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			
+
+<p>A long time ago i was playing with cloud-based image processing. The first reason why i didn&rsquo;t shared a reciple how to compile OpenCV as native app for windows azure cloud was trycky build process. It was too complicated and this tutorial will become outdated very quickly. The second one - Azure hosting wants a lot of money. So i put my research in this area on hold for better times.</p>
+
+<p>And i think the time has come. You probably heard about Node.js - server-side asynchronous Java Script library. I have very small experience with Java-Script, but Node.js attracted me so strong i decided to study it. In this post i will describe how to connect Node.js and OpenCV together. On server-side OpenCV libary can be used for many things - generating CAPTCHA&rsquo;s recognizing scans, counting people in video streams.. So i beleive my tutorial will come in handy to people who is looking how to do image processing in the cloud environment.</p>
+
+<p>Node.js is written in Java-script, and follows asynchronous programming model, where events and callbacks plays dominant role. OpenCV is a C++ library written in good old C and C++ and it don&rsquo;t bother with asynchronous and event-based programming model. Fortunately Node.js can interop with external modules written in C++. It&rsquo;s made via V8 engine which is a core of Node.js.</p>
+
+<p><span class="more"></span></p>
+
+<h2 id="disclaimer">Disclaimer</h2>
+
+<p>I will be using Mac OS as host platform. Keep in mind this since some commands may differs for Ubuntu or Debian. <strong>Windows users</strong> - you aren&rsquo;t lucky ones. I had no luck to build Node and OpenCV on windows so far. Please, post your comments if you succeed to build OpenCV module for Node.</p>
+
+<h2 id="prerequisites">Prerequisites</h2>
+
+<p>In this tutorial we will need the following software:</p>
+
+<ol>
+<li><a href="https://developer.apple.com/xcode/">XCode</a></li>
+<li><a href="http://www.cmake.org/">CMake</a></li>
+<li><a href="http://nodejs.org">Node.js</a></li>
+<li><a href="http://opencv.org">OpenCV</a></li>
+</ol>
+
+<p>I assume you already installed XCode and CMake. In next two sections we describe installation of Node.js and OpenCV.</p>
+
+<h2 id="installing-node-js">Installing Node.js</h2>
+
+<p>To install Node.js i used <a href="http://www.macports.org/">macports</a> software package manager. It&rsquo;s very similar to <code>apt-get</code> command from Unix.</p>
+
+<p><strong>This command will install latests stable Node.js:</strong></p>
+
+<pre><code>sudo port install nodejs
+</code></pre>
+
+<p>After running this command your Node.js is ready to use. It&rsquo;s not mandatory to use macports, you can install it using homebrew or build Node from the sources. It&rsquo;s up to you and will not affect further steps.</p>
+
+<p>Node.js can be extended by C++ Modules. This is a way to interop with OpenCV library. To use OpenCV from Node.js we have to write C++ Mobule that Node.js can use. To build this module a special build system is used. We install it via Node Package Manager using following command:</p>
+
+<p><strong>This command will install a GYP build system:</strong></p>
+
+<pre><code>sudo npm install -g node-gyp
+</code></pre>
+
+<p>Take a note on &ldquo;-g&rdquo; flag which means &ldquo;Install globally&rdquo;. By default npm installs new package to current directory.</p>
+
+<p>On this step we are done with setting up Node.js.</p>
+
+<h3 id="installing-opencv">Installing OpenCV</h3>
+
+<p>OpenCV can be build as <strong>static</strong> or <strong>shared</strong>. I describe my experience using both options with Node.js:</p>
+
+<h4 id="shared">Shared</h4>
+
+<p>By default, macports install shared libraries that are linked at run-time during application load. I was able to build a bare miminum Node.js module, but when i run it i got dyld load error. Maybe it&rsquo;s necessary to tell Node somehow where to search for OpenCV libs. But i decided to put this on hold and build a static OpenCV instead.</p>
+
+<blockquote>
+<p>If you know how to fix this easily your comments and suggestions are welcome!</p>
+</blockquote>
+
+<h4 id="static">Static</h4>
+
+<p>Building OpenCV as static libs is very trivial if you used CMake. Here is full stack of commands that clone latests OpenCV snapshot and build the final distribution package:</p>
+
+<p>Upon completition you shoudl have a folder named <code>opencv-node-bin</code> with following contents:</p>
+
+<h3 id="writing-your-first-c-module-for-node-js">Writing your first C++ Module for Node.js</h3>
+
+<p>It&rsquo;s actuall a very easy to interop between JavaScript and C++, since JS uses V8 engine which is written in C++ too. I used the <a href="http://nodejs.org/api/addons.html">official documentation</a> and <a href="https://github.com/kkaefer/node-cpp-modules">good examples</a> by Konstantin Käfer.</p>
+
+<p>Node.js uses it&rsquo;s own build system to C++ modules - <strong>node-gyp</strong>.</p>
+
+<p>There is a .gyp file which contains build options of your module. A GYP file is looks like JSON-like file where you specify your build targets.</p>
+
+<p><strong><em>binding.gyp</em></strong></p>
+
+<pre><code>{
+  &quot;targets&quot;: [
+    {
+      &quot;target_name&quot;: &quot;cv&quot;,
+      &quot;sources&quot;: [ &quot;main.cpp&quot; ],
+      &quot;include_dirs&quot;: [ &quot;/users/BloodAxe/Develop/opencv-node-bin/lib/inlcude/&quot; ],  
+      &quot;link_settings&quot;: {
+                        'libraries':    ['-lopencv_core -lopencv_features2d -lopencv_contrib'],
+                        'library_dirs': ['/users/BloodAxe/Develop/opencv-node-bin/lib/'],
+                       },
+    }
+  ]
+}
+</code></pre>
+
+<p>Let&rsquo;s look at it in more details:</p>
+
+<ul>
+<li>We define a single target with name <code>cv</code>.</li>
+<li>The target includes a single source file <code>main.cpp</code>.</li>
+<li>We adjust <code>include_dirs</code> and <code>link_settings</code> options to point our static OpenCV build.</li>
+</ul>
+
+<p>Second mandatory file is package.json - it contains meta-information about our module:</p>
+
+<p><strong>package.json</strong></p>
+
+<pre><code>{
+    &quot;name&quot;: &quot;cv&quot;,
+    &quot;version&quot;: &quot;1.0.0&quot;,
+    &quot;main&quot;: &quot;./build/Release/cv&quot;
+}
+</code></pre>
+
+<p>Finally, a source code of our module. For sake of simplicity, let&rsquo;s export a single function that prints OpenCV build information from Node.js:</p>
+
+<p><strong>main.cpp</strong></p>
+
+<p>To build your module you can write the following command (assuming your current directory contains binding.gyp):</p>
+
+<pre><code>npm build .
+</code></pre>
+
+<p>If you see the following output - your Node.js module that uses OpenCV has been built!</p>
+
+<p>Now it&rsquo;s time to check how it works.</p>
+
+<p>Here is a simple run script:</p>
+
+<p><strong><em>run.js</em></strong></p>
+
+<pre><code>var cv = require('./build/Release/cv');
+
+console.warn(cv.buildInformation());
+</code></pre>
+
+<p>To run it:</p>
+
+<pre><code>node run.js
+</code></pre>
+
+<h2 id="summary">Summary</h2>
+
+<p>I hope after reading this post you understood how to write a simple OpenCV wrapper for Node.js. In the next tutorial i will show how to perform simple image processing inside our Node module. Your comments for this post are welcome!</p>
+
+<p>You can find an bare minimum Node.js module example here: <strong><a href="https://github.com/BloodAxe/CloudCV/tree/bare-minimum">OpenCV module for Node.js</a></strong>.</p>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/opencv/" rel="tag">opencv</a></li>
+		<li><a href="/tags/nodejs/" rel="tag">nodejs</a></li>
+		<li><a href="/tags/cloudcv/" rel="tag">cloudcv</a></li>
+		<li><a href="/tags/cloud-computing/" rel="tag">cloud-computing</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/2013-08-27-connecting-opencv-and-node-js-inside-cloud9-ide/" rel="prev"><span>«Previous</span><p>Connecting OpenCV and Node.js inside Cloud9 IDE</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/2013-06-30-success-story-fueling-arbasketball-up-with-neon/" rel="next"><span>Next»</span><p>Success-story: Fueling ARBasketball up with NEON</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/2013-08-19-cloud-image-processing-using-opencv-and-node-js\/';
+    var disqus_title = 'Cloud image processing using OpenCV and Node.js';
+    var disqus_url = '\/post\/2013-08-19-cloud-image-processing-using-opencv-and-node-js\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

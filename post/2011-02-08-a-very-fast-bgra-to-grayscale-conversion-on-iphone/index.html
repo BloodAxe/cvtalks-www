@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A very fast BGRA to Grayscale conversion on Iphone</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="A very fast BGRA to Grayscale conversion on Iphone" />
+<meta property="og:description" content="Almost all image processing algorithms uses gray scale images as input source. But almost all hardware video sources provide frames in RGB/BGR(A) formats. So gray scale conversion is very popular operation. Although it&rsquo;s expensive enough to cause CPU-bound bottlenecks while running on mobile processors. In this post i will show you how to use ARM NEON intrinsic to get significant performance boost of BGRA to GRAY conversion.
+
+Color representation Pixel color can be presented in different ways." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/2011-02-08-a-very-fast-bgra-to-grayscale-conversion-on-iphone/" />
+
+
+<meta property="og:updated_time" content="2011-02-08T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">A very fast BGRA to Grayscale conversion on Iphone</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2011-02-08 00:00:00 &#43;0000 UTC">February 08, 2011</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			
+
+<p><img src="NEON_ProductImage.jpg" alt="" title="NEON" /></p>
+
+<p>Almost all image processing algorithms uses gray scale images as input source. But almost all hardware video sources provide frames in RGB/BGR(A) formats. So gray scale conversion is very popular operation. Although it&rsquo;s expensive enough to cause CPU-bound bottlenecks while running on mobile processors. In this post i will show you how to use ARM NEON intrinsic to get significant performance boost of BGRA to GRAY conversion.</p>
+
+<p><span class="more"></span></p>
+
+<h2 id="color-representation">Color representation</h2>
+
+<p><img src="RGB_illumination.jpg" alt="" /></p>
+
+<p>Pixel color can be presented in different ways. RGB color model presents color as a combination of three base colors of different intensity. Gray scale image contains only pixel luminance value without specific color. Pixels from RGB color model can be converted to gray scale using following formula: Y = 0.2126 R + 0.7152 G + 0.0722 B. Multipliers can very depending on the color space standards. Since we are targeting to iPhone it’s necessary to remember that camera capture from iOS AVFramework provide video frames in BGRA format (alpha channel is always equals to 255). For our further steps we will ignore it.</p>
+
+<h2 id="implementation">Implementation:</h2>
+
+<p>First of all we need reference C++ implementation. Just to know the starting point. Here it is:</p>
+
+<h4 id="reference-c-bgra-to-grayscale-conversion-function">Reference C++ BGRA to Grayscale conversion function:</h4>
+
+<pre><code class="language-cpp">static void reference_convert (common::UInt8 * dest, common::UInt8 * src, int n)
+{
+  int i;
+  int r,g,b;
+  int y;
+
+  for (i=0; i &lt; n; i++)
+  {
+    b = *src++; // load blue
+    g = *src++; // load green
+    r = *src++; // load red
+    src++; // skip aplha
+
+    // build weighted average:
+    y = (r*77)+(g*151)+(b*28);
+
+    // undo the scale by 256 and write to memory:
+    *dest++ = (y&gt;&gt;8);
+  }
+}
+</code></pre>
+
+<p>Okay, this function works relatively fast but not enough. Since iPhone has ARM CPU (Cortex A-9), it supports SIMD NEON engine which can be used for color conversion with great effort. SIMD technology allows process multiple data with one instruction call, saving time for other computations. Cutting a long story shorter – we will process eighth(!) pixels at one time.</p>
+
+<p><img src="NEON_ISA.jpg" alt="" /></p>
+
+<p>Fortunately, you don’t have to deal with such low-level instructions directly. There are special functions, called intrinsic, which can be treated as regular functions but they works with input data simultaneously. If you want to learn more about NEON intrinsic you will found link in the “References” section.</p>
+
+<h4 id="arm-neon-intrinsic-optimized-conversion">ARM NEON Intrinsic-optimized conversion:</h4>
+
+<pre><code class="language-cpp">void neon_convert (uint8_t * __restrict dest, uint8_t * __restrict src, int numPixels)
+{
+  int i;
+  uint8x8_t rfac = vdup_n_u8 (77);
+  uint8x8_t gfac = vdup_n_u8 (151);
+  uint8x8_t bfac = vdup_n_u8 (28);
+  int n = numPixels / 8;
+
+  // Convert per eight pixels
+  for (i=0; i &lt; n; ++i)
+  {
+    uint16x8_t  temp;
+    uint8x8x4_t rgb  = vld4_u8 (src);
+    uint8x8_t result;
+
+    temp = vmull_u8 (rgb.val[0],      bfac);
+    temp = vmlal_u8 (temp,rgb.val[1], gfac);
+    temp = vmlal_u8 (temp,rgb.val[2], rfac);
+
+    result = vshrn_n_u16 (temp, 8);
+    vst1_u8 (dest, result);
+    src  += 8*4;
+    dest += 8;
+  }
+}
+</code></pre>
+
+<p>This function process eight pixels per iteration. Great performance boost but I decided to go further and rewrite anything using assembler. This requires much more knowledge about CPU Architecture but result was worth of it.</p>
+
+<h2 id="neon-and-assembler">NEON and Assembler:</h2>
+
+<pre><code class="language-cpp">static void neon_asm_convert(uint8_t * __restrict dest, uint8_t * __restrict src, int numPixels)
+{
+  asm volatile(&quot;lsr          %2, %2, #3      \n&quot;
+               &quot;# build the three constants: \n&quot;
+               &quot;mov         r4, #28          \n&quot; // Blue channel multiplier
+               &quot;mov         r5, #151         \n&quot; // Green channel multiplier
+               &quot;mov         r6, #77          \n&quot; // Red channel multiplier
+               &quot;vdup.8      d4, r4           \n&quot;
+               &quot;vdup.8      d5, r5           \n&quot;
+               &quot;vdup.8      d6, r6           \n&quot;
+               &quot;.loop:                       \n&quot;
+               &quot;# load 8 pixels:             \n&quot;
+               &quot;vld4.8      {d0-d3}, [%1]!   \n&quot;
+               &quot;# do the weight average:     \n&quot;
+               &quot;vmull.u8    q7, d0, d4       \n&quot;
+               &quot;vmlal.u8    q7, d1, d5       \n&quot;
+               &quot;vmlal.u8    q7, d2, d6       \n&quot;
+               &quot;# shift and store:           \n&quot;
+               &quot;vshrn.u16   d7, q7, #8       \n&quot; // Divide q3 by 256 and store in the d7
+               &quot;vst1.8      {d7}, [%0]!      \n&quot;
+               &quot;subs        %2, %2, #1       \n&quot; // Decrement iteration count
+               &quot;bne         .loop            \n&quot; // Repeat unil iteration count is not zero
+               :
+               : &quot;r&quot;(dest), &quot;r&quot;(src), &quot;r&quot;(numPixels)
+               : &quot;r4&quot;, &quot;r5&quot;, &quot;r6&quot;
+               );
+}
+</code></pre>
+
+<h2 id="results">Results</h2>
+
+<p>I’ve done color conversion on 640x512 image (well-known graffiti image) 100 times to get more precise time measures. Here is a chart with graphical illustrations of BGRA to GRAY conversion using different algorithms. I’ve added two 3-rd party implementations (One from OpenCV – cvCvtColor, and one from Boost::Gil – copy_and_convert_pixels) to see how are they optimized. Testing hardware - IPhone 3Gs,  iOS 4.2.</p>
+
+<p><img src="bgra2grayconversion.png" alt="BGRA to GRAY conversion" title="BGRA to GRAY conversion" /></p>
+
+<p>As we can see, NEON optimized assembler function works three times faster that C++ function with intrinsic and six times faster than pure C++ implementation.</p>
+
+<h2 id="references">References</h2>
+
+<ol>
+<li>Many thanks for the <a href="http://hilbert-space.de/?p=22">Nils Pipenbrinck</a>. This article helps me a lot!</li>
+<li><a href="http://blogs.arm.com/software-enablement/161-coding-for-neon-part-1-load-and-stores/">Coding for NEON - Part 1: Load and Stores</a></li>
+</ol>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/xcode/" rel="tag">xcode</a></li>
+		<li><a href="/tags/neon/" rel="tag">neon</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/2011-02-11-future-of-the-augmented-reality/" rel="prev"><span>«Previous</span><p>Future of the Augmented Reality</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/2011-02-04-markerless-augmented-reality-on-iphone/" rel="next"><span>Next»</span><p>Markerless Augmented Reality on iPhone</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/2011-02-08-a-very-fast-bgra-to-grayscale-conversion-on-iphone\/';
+    var disqus_title = 'A very fast BGRA to Grayscale conversion on Iphone';
+    var disqus_url = '\/post\/2011-02-08-a-very-fast-bgra-to-grayscale-conversion-on-iphone\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

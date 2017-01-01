@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Integration of KAZE 1.6 in OpenCV</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="Integration of KAZE 1.6 in OpenCV" />
+<meta property="og:description" content="![AKAZE logo][akaze-logo]  A new version of KAZE and AKAZE features is a good candidate to become a part of OpenCV. So i decided to update KAZE port i made a while ago with a new version of these features and finally make a pull request to make it a part of OpenCV.
+KAZE are now a part of OpenCV library
+The OpenCV has accepted my pull-request and merged KAZE port into master branch of the OpenCV library." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/kaze-1.6-in-opencv/" />
+
+
+<meta property="og:updated_time" content="2014-04-03T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">Integration of KAZE 1.6 in OpenCV</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2014-04-03 00:00:00 &#43;0000 UTC">April 03, 2014</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			
+
+<div class="featured-image">
+![AKAZE logo][akaze-logo]
+</div>
+
+<p>A new version of KAZE and AKAZE features is a good candidate to become a part of OpenCV.
+So i decided to update KAZE port i made a while ago with a new version of these features
+and finally make a pull request to make it a part of OpenCV.</p>
+
+<p><span class="more clearfix" /></p>
+
+<div class="alert alert-info">
+<p class="lead">KAZE are now a part of OpenCV library</p>
+
+The OpenCV has accepted my pull-request and merged KAZE port into master branch of the OpenCV library. KAZE and AKAZE features will become available in OpenCV 3.0. Of course, you can grab development branch and build it from scratch to access it now.    
+</div>
+
+<p class=lead>
+** Looking for source code? It's all there: [KAZE &amp; AKAZE in OpenCV][kaze-branch]. **
+</p>
+
+<p><strong><a href="#results">TL;DR; Scroll down to estimation charts</a></strong>.</p>
+
+<h1 id="integration-roadmap">Integration roadmap</h1>
+
+<p>I&rsquo;m going to keep KAZE sources intact if possible to simplify their further support.
+Original KAZE and AKAZE implementations will be placed in <code>kaze/</code> and <code>akaze/</code> folders under <code>features2/</code> module and what we want is to write a facade-wrappers for these algorithms.</p>
+
+<p>To integrate KAZE featues we need to adopt sources code to OpenCV coding guidelines, make consistent with headers include system,
+integrate into build system, implement wrapped from KAZE to Features2D API and add unit tests. This will be split into three steps:</p>
+
+<ul>
+<li>Adopt KAZE and AKAZE sources (Remove unused functions, fix includes, macros)</li>
+<li>Implement Features2D wrappers and expose properties for runtime configuration of KAZE.</li>
+<li>Add unit tests and remove duplicate functions that are already exists in OpenCV.</li>
+<li>Replace OpenMP with cv::parallel<em>for</em></li>
+</ul>
+
+<h2 id="changes-in-kaze-sources">Changes in KAZE sources</h2>
+
+<p>First, we need to adopt existing sources.</p>
+
+<h3 id="step-1-update-opencv-includes">Step 1 -Update OpenCV includes</h3>
+
+<p>Since we&rsquo;re making KAZE a part of the library, it&rsquo;s impossible to reference OpenCV types using standard.</p>
+
+<pre><code class="language-cpp">#include &quot;opencv2/opencv.h&quot;
+</code></pre>
+
+<p>Instead one may want to use precomp.hpp header like this:</p>
+
+<pre><code class="language-cpp">#include &quot;precomp.hpp&quot;
+</code></pre>
+
+<h3 id="step-2-cleaning-up-the-code">Step 2 - Cleaning up the code</h3>
+
+<p>p There is a C-style assert(cond) macro that I will replace with CV_Assert for convinience.</p>
+
+<h4 id="dump-of-kaze-internal-structures">Dump of KAZE internal structures</h4>
+
+<p>KAZE and AKAZE algorithm can &lsquo;dump&rsquo; internal buffers to disk using imwrite function.
+But features2d module can not be available and i assume the goal of this feature was to simplify debugging of KAZE features.
+Since we may expect it is mature enough, we will remove these functions (<code>Save_Scale_Space</code>, <code>Save_Detector_Responses</code>, <code>Save_Flow_Responses</code>, <code>Save_Nonlinear_Scale_Space</code>) from sources.</p>
+
+<h4 id="fixing-the-pi-constant">Fixing the PI constant</h4>
+
+<p>KAZE uses <code>M_PI</code> symbol to represent Pi number. We will use <code>CV_PI</code> replacement instead.</p>
+
+<h4 id="cleanup-utils-cpp">Cleanup utils.cpp</h4>
+
+<p>Helper file utils.cpp contains auxilar functions that is not used by KAZE directly but rather used for precision esitmation.
+We don&rsquo;t need these functions in OpenCV packages. So we say goodbye to following functions:</p>
+
+<pre><code class="language-cpp">void draw_keypoints(cv::Mat&amp; img, const std::vector&lt;cv::KeyPoint&gt;&amp; kpts);
+int save_keypoints(const std::string&amp; outFile,
+                   const std::vector&lt;cv::KeyPoint&gt;&amp; kpts,
+                   const cv::Mat&amp; desc, bool save_desc);
+
+void matches2points_nndr(const std::vector&lt;cv::KeyPoint&gt;&amp; train,
+                         const std::vector&lt;cv::KeyPoint&gt;&amp; query,
+                         const std::vector&lt;std::vector&lt;cv::DMatch&gt; &gt;&amp; matches,
+                         std::vector&lt;cv::Point2f&gt;&amp; pmatches, float nndr);
+void compute_inliers_ransac(const std::vector&lt;cv::Point2f&gt;&amp; matches,
+                            std::vector&lt;cv::Point2f&gt;&amp; inliers,
+                            float error, bool use_fund);
+void compute_inliers_homography(const std::vector&lt;cv::Point2f&gt;&amp; matches,
+                                std::vector&lt;cv::Point2f&gt; &amp;inliers,
+                                const cv::Mat&amp;H, float min_error);
+void draw_inliers(const cv::Mat&amp; img1, const cv::Mat&amp; img2, cv::Mat&amp; img_com,
+                  const std::vector&lt;cv::Point2f&gt;&amp; ptpairs);
+void draw_inliers(const cv::Mat&amp; img1, const cv::Mat&amp; img2, cv::Mat&amp; img_com,
+                  const std::vector&lt;cv::Point2f&gt;&amp; ptpairs, int color);
+void read_homography(const std::string&amp; hFile, cv::Mat&amp; H1toN);
+void show_input_options_help(int example);
+</code></pre>
+
+<h3 id="step-3-fix-constant-expression-bug-in-compute-derivative-kernels">Step 3 - Fix constant expression bug in compute_derivative_kernels</h3>
+
+<p>This is very similar to a bug - a static array get initialized with ksize that is not compile-time defined.</p>
+
+<pre><code class="language-cpp">void compute_derivative_kernels(cv::OutputArray _kx, 
+                                cv::OutputArray _ky,
+                                int dx, int dy, int scale) {
+
+    int ksize = 3 + 2*(scale-1);
+    ...
+    float kerI[ksize];
+
+}
+</code></pre>
+
+<p>We can quickly fix this issue with std::vector:</p>
+
+<pre><code class="language-cpp">void compute_derivative_kernels(cv::OutputArray _kx, 
+                                cv::OutputArray _ky,
+                                int dx, int dy, int scale) {
+
+    int ksize = 3 + 2*(scale-1);
+    ...
+    std::vector&lt;float&gt; kerI(ksize);
+
+}
+</code></pre>
+
+<h3 id="step-5-wrapping-kaze-for-opencv">Step 5 - Wrapping KAZE for OpenCV</h3>
+
+<p>OpenCV provides three base types for extending features2d API:</p>
+
+<ul>
+<li><code>cv::FeaturesDetector</code></li>
+<li><code>cv::DescriptorExtractor</code></li>
+<li><code>cv::Feature2D</code></li>
+</ul>
+
+<p>Since KAZE features provides both detector and descriptor extractor features, we will derive
+our class from <code>cv::Feature2D</code>.
+First, we should implement helper functions to indicate depth and size of feature descriptor and matcher type:</p>
+
+<pre><code class="language-cpp">// returns the descriptor size in bytes
+int KAZE::descriptorSize() const
+{
+    return extended ? 128 : 64;
+}
+
+// returns the descriptor type
+int KAZE::descriptorType() const
+{
+    return CV_32F;
+}
+
+// returns the default norm type
+int KAZE::defaultNorm() const
+{
+    return NORM_L2;
+}
+</code></pre>
+
+<p>In order to make OpenCV happy we need to implement three virtual functions from Feature2D: <code>detectImpl</code>, <code>computeImpl</code>
+and <code>operator()</code> also known as <strong>detectAndCompute</strong>.</p>
+
+<h3 id="step-6-detection-of-kaze-keypoints">Step 6 - Detection of KAZE keypoints:</h3>
+
+<pre><code class="language-cpp">void KAZE::detectImpl(InputArray image, std::vector&lt;KeyPoint&gt;&amp; keypoints, InputArray mask) const
+{
+    Mat img = image.getMat();
+    if (img.type() != CV_8UC1)
+        cvtColor(image, img, COLOR_BGR2GRAY);
+
+    Mat img1_32;
+    img.convertTo(img1_32, CV_32F, 1.0 / 255.0, 0);
+
+    KAZEOptions options;
+    options.img_width = img.cols;
+    options.img_height = img.rows;
+    options.extended = extended;
+
+    KAZEFeatures impl(options);
+    impl.Create_Nonlinear_Scale_Space(img1_32);
+    impl.Feature_Detection(keypoints);
+
+    if (!mask.empty())
+    {
+        cv::KeyPointsFilter::runByPixelsMask(keypoints, mask.getMat());
+    }
+}
+</code></pre>
+
+<p>Please note that we conver input image to grayscale normalized to [0;1] floating-point image.
+This is a requirement of KAZE algorithm.</p>
+
+<h3 id="step-7-extraction-of-kaze-descriptors">Step 7 - Extraction of KAZE descriptors:</h3>
+
+<pre><code class="language-cpp">void KAZE::computeImpl(InputArray image, 
+                       std::vector&lt;KeyPoint&gt;&amp; keypoints, 
+                       OutputArray descriptors) const
+{
+    cv::Mat img = image.getMat();
+    if (img.type() != CV_8UC1)
+        cvtColor(image, img, COLOR_BGR2GRAY);
+
+    Mat img1_32;
+    img.convertTo(img1_32, CV_32F, 1.0 / 255.0, 0);
+
+    cv::Mat&amp; desc = descriptors.getMatRef();
+
+    KAZEOptions options;
+    options.img_width = img.cols;
+    options.img_height = img.rows;
+    options.extended = extended;
+
+    KAZEFeatures impl(options);
+    impl.Create_Nonlinear_Scale_Space(img1_32);
+    impl.Feature_Description(keypoints, desc);
+
+    CV_Assert(!desc.rows || desc.cols == descriptorSize() &amp;&amp; 
+              &quot;Descriptor size does not match expected&quot;);
+    CV_Assert(!desc.rows || (desc.type() &amp; descriptorType()) &amp;&amp; 
+              &quot;Descriptor type does not match expected&quot;);
+}
+</code></pre>
+
+<p>Two asserts at the end of the function to ensure that KAZE returns consistent with <code>descriptorType()</code> and <code>descriptorSize()</code> results.</p>
+
+<h3 id="step-8-detection-and-extraction-at-single-call">Step 8 - Detection and extraction at single call:</h3>
+
+<pre><code class="language-cpp">void KAZE::operator()(InputArray image, InputArray mask,
+    std::vector&lt;KeyPoint&gt;&amp; keypoints,
+    OutputArray descriptors,
+    bool useProvidedKeypoints) const
+{
+    cv::Mat img = image.getMat();
+    if (img.type() != CV_8UC1)
+        cvtColor(image, img, COLOR_BGR2GRAY);
+
+    Mat img1_32;
+    img.convertTo(img1_32, CV_32F, 1.0 / 255.0, 0);
+
+    cv::Mat&amp; desc = descriptors.getMatRef();
+
+    KAZEOptions options;
+    options.img_width = img.cols;
+    options.img_height = img.rows;
+    options.extended = extended;
+
+    KAZEFeatures impl(options);
+    impl.Create_Nonlinear_Scale_Space(img1_32);
+
+    if (!useProvidedKeypoints)
+    {
+        impl.Feature_Detection(keypoints);
+    }
+
+    if (!mask.empty())
+    {
+        cv::KeyPointsFilter::runByPixelsMask(keypoints, mask.getMat());
+    }
+
+    impl.Feature_Description(keypoints, desc);
+
+    CV_Assert(!desc.rows || desc.cols == descriptorSize() &amp;&amp; 
+              &quot;Descriptor size does not match expected&quot;);
+    CV_Assert(!desc.rows || (desc.type() &amp; descriptorType()) &amp;&amp; 
+              &quot;Descriptor type does not match expected&quot;);
+}
+</code></pre>
+
+<h3 id="step-9-algorithm-configuration">Step 9 - Algorithm configuration</h3>
+
+<p>OpenCV provides an option to create and configure algorithm in runtime by it&rsquo;s name. This is done by using special CV_INIT_ALGORITHM marco, that initialize all OpenCV algorithms during startup. Using this macro we register new KAZE and AKAZE algorithms under Feature2D module and expose additional properties that user can change in runtime:</p>
+
+<p><strong>features2d_init.cpp</strong>:</p>
+
+<pre><code class="language-cpp">CV_INIT_ALGORITHM(KAZE, &quot;Feature2D.KAZE&quot;,
+                  obj.info()-&gt;addParam(obj, &quot;extended&quot;, obj.extended))
+	
+CV_INIT_ALGORITHM(AKAZE, &quot;Feature2D.AKAZE&quot;,
+                  obj.info()-&gt;addParam(obj, &quot;descriptor_channels&quot;, obj.descriptor_channels);
+                  obj.info()-&gt;addParam(obj, &quot;descriptor&quot;, obj.descriptor);
+                  obj.info()-&gt;addParam(obj, &quot;descriptor_size&quot;, obj.descriptor_size))
+</code></pre>
+
+<p>Please note, that KAZE and AKAZE has much more properties. They (and documentation for them) will be added later.</p>
+
+<h3 id="step-10-unit-tests">Step 10 - Unit tests</h3>
+
+<p>There is a nice feature detectors and descriptors unit testing system in OpenCV. Using it is very simple, but it performs many sanity checks and validates both parths of Features2D API.</p>
+
+<p><strong>test_keypoints.cpp</strong>:</p>
+
+<p>All we need to do is to add a new unit test suites:</p>
+
+<pre><code class="language-cpp">TEST(Features2d_Detector_Keypoints_KAZE, validation)
+{
+    CV_FeatureDetectorKeypointsTest test(Algorithm::create&lt;FeatureDetector&gt;(&quot;Feature2D.KAZE&quot;));
+    test.safe_run();
+}
+
+TEST(Features2d_Detector_Keypoints_AKAZE, validation)
+{
+    CV_FeatureDetectorKeypointsTest test(Algorithm::create&lt;FeatureDetector&gt;(&quot;Feature2D.AKAZE&quot;));
+    test.safe_run();
+}
+</code></pre>
+
+<p>In addition to simple checks that our implementation does some job, there are more sophisticaed tests to verify rotation and scale invariance of the computed features.</p>
+
+<p><strong>test_rotation_and_scale_invariance.cpp</strong>:</p>
+
+<pre><code class="language-cpp">TEST(Features2d_ScaleInvariance_Detector_KAZE, regression)
+{
+    DetectorScaleInvarianceTest test(Algorithm::create&lt;FeatureDetector&gt;(&quot;Feature2D.KAZE&quot;),
+        0.08f,
+        0.49f);
+    test.safe_run();
+}
+
+TEST(Features2d_ScaleInvariance_Detector_AKAZE, regression)
+{
+    DetectorScaleInvarianceTest test(Algorithm::create&lt;FeatureDetector&gt;(&quot;Feature2D.AKAZE&quot;),
+        0.08f,
+        0.49f);
+    test.safe_run();
+}
+</code></pre>
+
+<h3 id="step-11-enabling-multithreading">Step 11 - Enabling multithreading</h3>
+
+<p>Both, feature detection and extraction stage can be made faster by using multi-threading.
+Fortunately, AKAZE designed very clear and one may are find OpenMP instructions in critical sections:</p>
+
+<pre><code class="language-cpp">#pragma omp parallel for
+for (int i = 0; i &lt; (int)(kpts.size()); i++) {
+    Compute_Main_Orientation(kpts[i]);
+    Get_SURF_Descriptor_64(kpts[i], desc.ptr&lt;float&gt;(i));
+}
+</code></pre>
+
+<p>But OpenCV uses abstraction layer for multithreading called <code>cv::parallel_for_</code>. Personally I think it&rsquo;s very wise architectural desing decision since it allows to get rid of specific cavetas for particular threading backends (OpenCV, TBB, Concurrency, GCD, etc). You can read more about using cv::parallel<em>for</em> in one of my <a href="/articles/2012-11-06-maximizing-performance-grayscale-color-conversion-using-neon-and-cvparallel_for/">previous posts</a> or visit <a href="http://answers.opencv.org/question/3730/how-to-use-parallel_for/">OpenCV documentation</a>.</p>
+
+<p>For instance, here is how to parallelize building of the nonlinear scale space for AKAZE. The old version of OpenMP version of <code>Compute_Multiscale_Derivatives</code> function looked like this:</p>
+
+<pre><code class="language-cpp">/**
+ * @brief This method computes the multiscale derivatives for the nonlinear scale space
+ */
+void AKAZEFeatures::Compute_Multiscale_Derivatives(void) {
+
+    #pragma omp parallel for
+    for (int i = 0; i &lt; (int)(evolution_.size()); i++) {
+
+        float ratio = pow(2.f, (float)evolution_[i].octave);
+        int sigma_size_ = fRound(evolution_[i].esigma*options_.derivative_factor / ratio);
+
+        compute_scharr_derivatives(evolution_[i].Lsmooth, evolution_[i].Lx, 1, 0, sigma_size_);
+        compute_scharr_derivatives(evolution_[i].Lsmooth, evolution_[i].Ly, 0, 1, sigma_size_);
+        compute_scharr_derivatives(evolution_[i].Lx, evolution_[i].Lxx, 1, 0, sigma_size_);
+        compute_scharr_derivatives(evolution_[i].Ly, evolution_[i].Lyy, 0, 1, sigma_size_);
+        compute_scharr_derivatives(evolution_[i].Lx, evolution_[i].Lxy, 0, 1, sigma_size_);
+
+        evolution_[i].Lx = evolution_[i].Lx*((sigma_size_));
+        evolution_[i].Ly = evolution_[i].Ly*((sigma_size_));
+        evolution_[i].Lxx = evolution_[i].Lxx*((sigma_size_)*(sigma_size_));
+        evolution_[i].Lxy = evolution_[i].Lxy*((sigma_size_)*(sigma_size_));
+        evolution_[i].Lyy = evolution_[i].Lyy*((sigma_size_)*(sigma_size_));
+    }
+}
+</code></pre>
+
+<p>Using <code>cv::parallel_for_</code> we introduce an &lsquo;invoker&rsquo; function object that perform a discrete piece of job on small subset of whole data. Threading API does all job on scheduling multithreaded execution among worker threads:</p>
+
+<pre><code class="language-cpp">class MultiscaleDerivativesInvoker : public cv::ParallelLoopBody
+{
+public:
+    explicit MultiscaleDerivativesInvoker(std::vector&lt;TEvolution&gt;&amp; ev, const AKAZEOptions&amp; opt) 
+    : evolution_(ev)
+    , options_(opt)
+    {
+    }
+
+
+    void operator()(const cv::Range&amp; range) const 
+    {
+        for (int i = range.start; i &lt; range.end; i++)
+        {
+            float ratio = pow(2.f, (float)evolution_[i].octave);
+            int sigma_size_ = fRound(evolution_[i].esigma * options_.derivative_factor / ratio);
+
+            compute_scharr_derivatives(evolution_[i].Lsmooth, evolution_[i].Lx, 1, 0, sigma_size_);
+            compute_scharr_derivatives(evolution_[i].Lsmooth, evolution_[i].Ly, 0, 1, sigma_size_);
+            compute_scharr_derivatives(evolution_[i].Lx, evolution_[i].Lxx, 1, 0, sigma_size_);
+            compute_scharr_derivatives(evolution_[i].Ly, evolution_[i].Lyy, 0, 1, sigma_size_);
+            compute_scharr_derivatives(evolution_[i].Lx, evolution_[i].Lxy, 0, 1, sigma_size_);
+
+            evolution_[i].Lx = evolution_[i].Lx*((sigma_size_));
+            evolution_[i].Ly = evolution_[i].Ly*((sigma_size_));
+            evolution_[i].Lxx = evolution_[i].Lxx*((sigma_size_)*(sigma_size_));
+            evolution_[i].Lxy = evolution_[i].Lxy*((sigma_size_)*(sigma_size_));
+            evolution_[i].Lyy = evolution_[i].Lyy*((sigma_size_)*(sigma_size_));
+        }
+    }
+
+private:
+    mutable std::vector&lt;TEvolution&gt; &amp; evolution_;
+    AKAZEOptions                      options_;
+};
+
+/**
+ * @brief This method computes the multiscale derivatives for the nonlinear scale space
+ */
+void AKAZEFeatures::Compute_Multiscale_Derivatives(void) {
+
+    cv::parallel_for_(cv::Range(0, evolution_.size()), 
+                      MultiscaleDerivativesInvoker(evolution_, options_));
+}
+</code></pre>
+
+<p><a name="results"></a></p>
+
+<h1 id="kaze-performance">KAZE performance</h1>
+
+<p>After integration I ran KAZE and AKAZE using <a href="https://github.com/BloodAxe/OpenCV-Features-Comparison">feature descriptor estimation framework</a> to see how they perform. I was really impressed about matching precision on rotation and scaling tests. Look at these self-explaining charts where <strong>AKAZE beats all other features</strong>!</p>
+
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/static/modules/gviz/1.0/chart.js">
+{"dataSourceUrl":"//docs.google.com/spreadsheet/tq?key=0AuBBvmQlA4pfdGhzcWVFUWhqZkdzb01HTnIwQllIQlE&transpose=0&headers=1&range=A41%3AG78&gid=0&pub=1","options":{"titleTextStyle":{"bold":true,"color":"#000","fontSize":16},"curveType":"","animation":{"duration":0},"width":900,"lineWidth":2,"hAxis":{"useFormatFromData":true,"title":"Rotation degree","minValue":null,"viewWindow":{"max":null,"min":null},"maxValue":null},"vAxes":[{"useFormatFromData":true,"title":"Percent of correct matches","minValue":null,"logScale":false,"viewWindow":{"max":null,"min":null},"maxValue":null},{"useFormatFromData":true,"minValue":null,"logScale":false,"viewWindow":{"max":null,"min":null},"maxValue":null}],"booleanRole":"certainty","title":"Rotation test","height":600,"interpolateNulls":false,"domainAxis":{"direction":1},"legend":"right","focusTarget":"series","annotations":{"domain":{}},"useFirstColumnAsDomain":true,"tooltip":{"trigger":"none"}},"state":{},"view":{},"isDefaultVisualization":false,"chartType":"LineChart","chartName":"Chart 1"}
+</script>
+
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/static/modules/gviz/1.0/chart.js">
+{"dataSourceUrl":"//docs.google.com/spreadsheet/tq?key=0AuBBvmQlA4pfdGhzcWVFUWhqZkdzb01HTnIwQllIQlE&transpose=0&headers=1&range=A80%3AG98&gid=0&pub=1","options":{"titleTextStyle":{"bold":true,"color":"#000","fontSize":16},"curveType":"","animation":{"duration":0},"width":900,"lineWidth":2,"hAxis":{"useFormatFromData":true,"title":"Scale factor","minValue":null,"viewWindow":{"max":null,"min":null},"maxValue":null},"vAxes":[{"useFormatFromData":true,"title":"Percent of correct matches","minValue":null,"logScale":false,"viewWindow":{"max":null,"min":null},"maxValue":null},{"useFormatFromData":true,"minValue":null,"logScale":false,"viewWindow":{"max":null,"min":null},"maxValue":null}],"title":"Scale invariance","booleanRole":"certainty","height":600,"legend":"right","focusTarget":"series","annotations":{"domain":{}},"useFirstColumnAsDomain":true,"tooltip":{"trigger":"none"}},"state":{},"view":{},"isDefaultVisualization":false,"chartType":"LineChart","chartName":"Chart 1"}
+</script>
+
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/static/modules/gviz/1.0/chart.js">
+{"dataSourceUrl":"//docs.google.com/spreadsheet/tq?key=0AuBBvmQlA4pfdGhzcWVFUWhqZkdzb01HTnIwQllIQlE&transpose=0&headers=1&range=A30%3AG39&gid=0&pub=1","options":{"titleTextStyle":{"bold":true,"color":"#000","fontSize":16},"series":{"0":{"hasAnnotations":true}},"curveType":"","animation":{"duration":0},"width":900,"lineWidth":2,"hAxis":{"title":"Half of the gaussian kernel size","useFormatFromData":true,"minValue":null,"viewWindow":{"max":null,"min":null},"maxValue":null},"vAxes":[{"title":"Percent of correct matches","useFormatFromData":true,"minValue":null,"viewWindow":{"max":null,"min":null},"logScale":false,"maxValue":null},{"useFormatFromData":true,"minValue":null,"viewWindow":{"max":null,"min":null},"logScale":false,"maxValue":null}],"booleanRole":"certainty","title":"Robustness to blur","height":600,"legend":"right","focusTarget":"series","useFirstColumnAsDomain":true,"tooltip":{"trigger":"none"}},"state":{},"view":{},"isDefaultVisualization":true,"chartType":"LineChart","chartName":"Chart 3"}
+</script>
+
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/static/modules/gviz/1.0/chart.js">
+{"dataSourceUrl":"//docs.google.com/spreadsheet/tq?key=0AuBBvmQlA4pfdGhzcWVFUWhqZkdzb01HTnIwQllIQlE&transpose=0&headers=1&range=A2%3AG28&gid=0&pub=1","options":{"titleTextStyle":{"bold":true,"color":"#000","fontSize":16},"curveType":"","animation":{"duration":0},"width":900,"lineWidth":2,"hAxis":{"title":"Change of brightness","useFormatFromData":true,"minValue":null,"viewWindow":{"max":null,"min":null},"maxValue":null},"vAxes":[{"title":"Percent of correct matches","useFormatFromData":false,"formatOptions":{"source":"inline"},"minValue":null,"format":"0.##","logScale":false,"viewWindow":{"max":null,"min":null},"maxValue":null},{"useFormatFromData":true,"minValue":null,"viewWindow":{"max":null,"min":null},"maxValue":null}],"title":"Brightness invariance","booleanRole":"certainty","height":600,"legend":"right","focusTarget":"series","useFirstColumnAsDomain":true,"tooltip":{"trigger":"none"}},"state":{},"view":{},"isDefaultVisualization":true,"chartType":"LineChart","chartName":"Chart 4"}
+</script>
+
+<h1 id="references">References</h1>
+
+<ul>
+<li><a href="https://github.com/BloodAxe/opencv/tree/kaze">KAZE Integration branch on GitHub</a></li>
+<li><a href="http://www.robesafe.com/personal/pablo.alcantarilla/code/kaze_features_1.6.0.tar.gz">KAZE 1.6 implementation</a></li>
+<li><a href="http://www.robesafe.com/personal/pablo.alcantarilla/code/akaze_features_1.1.0.tar.gz">AKAZE 1.2 implementation</a></li>
+</ul>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/opencv/" rel="tag">opencv</a></li>
+		<li><a href="/tags/algorithms/" rel="tag">algorithms</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/about/" rel="prev"><span>«Previous</span><p>About Me</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/opencv-is-not-a-panacea/" rel="next"><span>Next»</span><p>OpenCV is not a panacea</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/kaze-1.6-in-opencv\/';
+    var disqus_title = 'Integration of KAZE 1.6 in OpenCV';
+    var disqus_url = '\/post\/kaze-1.6-in-opencv\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

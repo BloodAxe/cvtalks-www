@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image processing in your browser - Unit Test automation</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="Image processing in your browser - Unit Test automation" />
+<meta property="og:description" content="JavaScript. Do you like debug JavaScript code? I hate it. Literally. What what if you have to? In this post I&rsquo;m going to show you how to simplify your life by automating unit testing of the JavaScript code for the browser.
+To get things more interesting - let&rsquo;s automate unit-testing of the image processing library called JSFeat. JSFeat provides a JavaScript implementation of the basic image processing operations that let you to process images in your browser and build sophisticated algorithms." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/image-processing-in-your-browser-unit-test-automation/" />
+
+
+<meta property="og:updated_time" content="2014-10-31T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">Image processing in your browser - Unit Test automation</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2014-10-31 00:00:00 &#43;0000 UTC">October 31, 2014</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			<p>JavaScript. Do you like debug JavaScript code? I hate it. Literally.
+What what if you have to? In this post I&rsquo;m going to show you how to
+simplify your life by automating unit testing of the JavaScript code
+for the browser.</p>
+
+<p><img src="monkeys.jpg" alt="" /></p>
+
+<p>To get things more interesting - let&rsquo;s automate unit-testing of the
+image processing library called <a href="http://inspirit.github.io/jsfeat/">JSFeat</a>. JSFeat provides a
+JavaScript implementation of the basic image processing operations
+that let you to process images in your browser and build sophisticated
+algorithms. <strong>It&rsquo;s like OpenCV for web-browser</strong>.</p>
+
+<p>The <a href="https://github.com/BloodAxe/jsfeat">source code</a> for this tutorial is available on my Github page: <a href="https://github.com/BloodAxe/jsfeat">https://github.com/BloodAxe/jsfeat</a>.</p>
+
+<p><span class="more"></span></p>
+
+<p>Typically, when we test C++ software, we end up with test framework of your
+choise and test runner. It can be continuous integration server like Jenkins
+in your company or public Travic-CI service for open-source project.</p>
+
+<p>With browser JavaScript things gets more complicated. I&rsquo;m not talking about
+JS unit-test frameworks - <a href="https://github.com/mochajs/mocha">mocha</a> is more than enough. I&rsquo;m talking about
+browser testing itself. Basically you have to open a webpage in your browser to
+invoke a test cases. Manually. Ew!</p>
+
+<p>Moreover, due to browser sandbox, you are not allowed to access canvas data for
+local files. In practice it means that code like showed below <strong>won&rsquo;t work if you
+open a HTML page as a local file</strong>:</p>
+
+<pre><code class="language-js">var img = new Image();
+img.src = 'dummy.jpg';
+img.onload = function() {
+    // This will never happen
+};
+</code></pre>
+
+<p>You will have to setup a local HTTP server to serve these tests pages to get this
+works. One simple way to do it by using python: <code>python -m SimpleHTTPServer 8000</code> will
+do the job. However it&rsquo;s only a partial solution.</p>
+
+<p>Now let&rsquo;s imagine that you have a lot of these tests. Would you open each page
+individually, watch how they run and wait to analyze their results? No doubts,
+you can do it, but this is not automated testing in any way.</p>
+
+<p>To recap, here are a list of problems that exists in browser JS testing:
+ - A test framework
+ - Have to open test pages in a browser
+ - Hard to automate and collect results
+ - Need local webserver</p>
+
+<p>Since I&rsquo;m used to Mocha, i will use it. However it&rsquo;s not obligatory and you can chose any other test framework you like. But as you will see later, with Mocha it&rsquo;s really simple. ith mocha you can write your scripts like showed below. This is a real test I wrote as an example for JSFeat:</p>
+
+<pre><code class="language-js">// Source test/test_grayscale.js
+'use strict';
+
+describe('jsfeat', function(){
+
+  describe('imgproc', function(){
+
+    it('grayscale', function(done) {
+
+      var img = new Image();
+      img.src = 'lena.png';
+      img.onload = function() {
+
+        var width = img.width;
+        var height = img.height;
+
+        var canvas = document.createElement('canvas');
+        var context2d = canvas.getContext('2d');
+
+        context2d.drawImage(img, 0, 0, width, height);
+        var image_data = context2d.getImageData(0, 0, width, height);
+ 
+        var gray_img = new jsfeat.matrix_t(width, height, jsfeat.U8_t | jsfeat.C1_t);
+        var code = jsfeat.COLOR_RGBA2GRAY;
+
+        jsfeat.imgproc.grayscale(image_data.data, width, height, gray_img, code);
+        done();
+      };
+
+    });
+
+  });
+   
+});
+</code></pre>
+
+<p>There is a really powerful tool in Nodejs world called [Grunt][grunt] that we will use
+to automate tasks like JavaScript static code checking, minification and testing.</p>
+
+<pre><code class="language-bash">npm install -g grunt-cli
+npm install grunt --save-dev
+</code></pre>
+
+<p>A headless browser is a full-featured browser engine without graphical interface. It was designed to simulate a real browser including DOM and JavaScript. The most important headless browser is <a href="http://phantomjs.org/">PhantomJS</a>. I found that it works like a charm for this task. With phantomjs we can run arbitrary HTML page inside and execute JavaScript code. This tool let&rsquo;s us to get rid of the manual tabs openning.</p>
+
+<pre><code class="language-js">// script.js:
+// Simple Javascript example
+
+console.log('Loading a web page');
+var page = require('webpage').create();
+var url = 'http://www.phantomjs.org/';
+page.open(url, function (status) {
+  //Page is loaded!
+  phantom.exit();
+});
+
+phantomjs script.js
+</code></pre>
+
+<p>PhantomJS and Mocha are already connected together in a single grunt task called <a href="https://github.com/jdcataldo/grunt-mocha-phantomjs">grunt-mocha-phantomjs</a>. And we use <a href="https://github.com/gruntjs/grunt-contrib-connect">grunt-contrib-connect</a> to host a local webserver.</p>
+
+<pre><code class="language-bash">npm install grunt-mocha-phantomjs --save-dev
+</code></pre>
+
+<p>This extension does exactly what we need: it starts a local webserver, open page in phantomjs and run JS test cases.
+With help of it, we are able to run all our tests using simple command:</p>
+
+<pre><code class="language-bash">grunt test
+</code></pre>
+
+<p>Here&rsquo;s an example output:</p>
+
+<pre><code class="language-bash">Running &quot;concat:jsfeat&quot; (concat) task
+File build/jsfeat.js created.
+
+Running &quot;uglify:build&quot; (uglify) task
+&gt;&gt; 1 file created.
+
+Running &quot;connect:server&quot; (connect) task
+Started connect web server on http://0.0.0.0:8000
+
+Running &quot;mocha_phantomjs:all&quot; (mocha_phantomjs) task
+
+
+  jsfeat
+    imgproc
+      ✓ grayscale 
+
+
+  1 passing (41ms)
+
+
+Done, without errors.
+</code></pre>
+
+<p>Within this setup you are now able to automate testing of JavaScript code that require interaction with HTML5 Canvas features. This way I test the code that I write for browser image processing. I hope you enjoyed this post and I&rsquo;m looking forward to see your questions and mentions in a comments!</p>
+
+<p>The <a href="https://github.com/BloodAxe/jsfeat">source code</a> for this tutorial is available on my Github page: <a href="https://github.com/BloodAxe/jsfeat">https://github.com/BloodAxe/jsfeat</a>.</p>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/tutorials/" rel="tag">tutorials</a></li>
+		<li><a href="/tags/nodejs/" rel="tag">nodejs</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/tile-based-image-processing/" rel="prev"><span>«Previous</span><p>Tile-based image processing</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/computer-vision-digest-september-2014/" rel="next"><span>Next»</span><p>Computer Vision Digest - September 2014</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/image-processing-in-your-browser-unit-test-automation\/';
+    var disqus_title = 'Image processing in your browser - Unit Test automation';
+    var disqus_url = '\/post\/image-processing-in-your-browser-unit-test-automation\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>

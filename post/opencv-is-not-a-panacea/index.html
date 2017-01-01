@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenCV is not a panacea</title>
+<meta name="description" content="A personal blog about computer vision, AI, machine learning and programmin in OpenCV">
+<meta name="generator" content="Hugo 0.18" />
+<meta property="og:title" content="OpenCV is not a panacea" />
+<meta property="og:description" content="Perhaps, someone may find this post provocative or offensive. But in fact it&rsquo;s not. Very often i receive offers from all kind of CXX (CEO, CTO, COO, C-bla-bla-bla) that can be formulated like &ldquo;We want to build product X using OpenCV&rdquo;. What&rsquo;s wrong with you guys? OpenCV is not a panacea. In this post i&rsquo;ll try to reveal this myth.
+Although OpenCV does a great help on getting proof-of-concept software that every start-up needs most of all at early stages, it can make a nightmare for developers in production stage." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/post/opencv-is-not-a-panacea/" />
+
+
+<meta property="og:updated_time" content="2014-03-16T00:00:00&#43;00:00"/>
+
+
+
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,700,600" type="text/css" media="all" />
+<link rel="stylesheet" href="/css/style.css" type="text/css" media="all" />
+<script type="text/javascript" src="/js/scripts.js"></script>
+<!--[if lt IE 9]>
+	<script src="/js/css3-mediaqueries.js"></script>
+<![endif]-->
+</head>
+<body class="home blog mr-right-sb mr-mobile" itemscope="itemscope" itemtype="http://schema.org/WebPage">
+	<div class="mr-container mr-container-outer">
+		<div class="mr-header-mobile-nav clearfix"></div>
+			<header class="mr-header" itemscope="itemscope" itemtype="http://schema.org/WPHeader">
+				<div class="mr-container mr-container-inner mr-row clearfix">
+					<div class="mr-custom-header clearfix">
+						<div class="mr-site-identity">
+							<div class="mr-site-logo" role="banner" itemscope="itemscope" itemtype="http://schema.org/Brand">
+								<div class="mr-header-text">
+									<a class="mr-header-text-link" href="/" title="Computer Vision Talks" rel="home">
+										<h1 class="mr-header-title">Computer Vision Talks</h1>
+										<h2 class="mr-header-tagline">All you want to know about image processing</h2>
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="mr-main-nav-wrap">
+					<nav class="menu" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+	<ul class="menu__list">
+		
+		
+		
+			<li class="menu__item "><a class="menu__link" href="/about/">ABOUT ME</a></li>
+		
+		
+	</ul>
+</nav>
+				</div>
+			</header>
+		<div class="mr-wrapper clearfix">
+
+
+<div class="main-content mr-content" role="main" itemprop="mainContentOfPage">
+	<article class="post">
+		<header class="entry-header clearfix">
+			<h1 class="entry-title">OpenCV is not a panacea</h1>
+			<p class="mr-meta entry-meta">
+				<svg class="icon icon-time" height="14" viewBox="0 0 16 16" width="14" xmlns="http://www.w3.org/2000/svg"><path d="m8-.0000003c-4.4 0-8 3.6-8 8 0 4.4000003 3.6 8.0000003 8 8.0000003 4.4 0 8-3.6 8-8.0000003 0-4.4-3.6-8-8-8zm0 14.4000003c-3.52 0-6.4-2.88-6.4-6.4000003 0-3.52 2.88-6.4 6.4-6.4 3.52 0 6.4 2.88 6.4 6.4 0 3.5200003-2.88 6.4000003-6.4 6.4000003zm.4-10.4000003h-1.2v4.8l4.16 2.5600003.64-1.04-3.6-2.1600003z"/></svg>
+				<time class="entry-meta-date updated" datetime="2014-03-16 00:00:00 &#43;0000 UTC">March 16, 2014</time>
+			</p>
+		</header>
+		<div class="entry-content clearfix">
+			
+			<p>Perhaps, someone may find this post provocative or offensive. But in fact it&rsquo;s not.
+Very often i receive offers from all kind of CXX (CEO, CTO, COO, C-bla-bla-bla) that can be formulated like &ldquo;We want to build product X using OpenCV&rdquo;.
+What&rsquo;s wrong with you guys? OpenCV is not a panacea. In this post i&rsquo;ll try to reveal this myth.</p>
+
+<p>Although OpenCV does a great help on getting proof-of-concept software that every start-up needs most of all at early stages, it can make a nightmare for developers in production stage.
+The first thing to remember - OpenCV is an open-source project, but there is an official maintainer Itseez company.
+From one size this looks fine since you may expect that library development will not be abandoned one day.
+From the other side do you think it&rsquo;s a good idea to build your product around a product of another company that you cannot control?
+No doubts, Itseez doing it best to fix bugs and add new features to OpenCV, but there is no SLA between you and OpenCV&rsquo;s maintainers on terms of bug-fixing.
+Even more - sometimes new releases (with critical bugfixes) break backward compatibility.</p>
+
+<p>p
+    | Here are real-world issues related to OpenCV that I have encountered in past:</p>
+
+<pre><code>ul
+    li Implicit element type of the cv::Mat.
+    li Sick way of passing arguments to some functions. cv::Mat(2,4, CV_32FC1) != cv::Mat(1, 4, CV_32FC2).        
+    li Somewhere in between 2.1 and 2.2 Lukas-canade optical flow (LKT tracker) algorithm returned different tracking results (coordinates of tracked points were slightly different).
+    li A cv::findHomography function clould to return empty homography matrix (zero rows, zero cols) in ~2.4. 
+    li Inconsistent ownership transfer with cv::Mat and cv::InputArray.
+    li Lack of OpenGL rendering on OSX platform (while CMake report everything's fine).
+    li Did ANYONE managed to get cv::VideoWriter working?
+
+    li 
+        | What will happen in this case (yes, the size of the destination matrix is 65x65):
+        pre.
+            cv::Mat src(480, 640, CV_8UC1);
+            src(cv::Rect(10,10, 64, 64)) = cv::Mat::eye(65,65, CV_8UC1);
+        | And in this:
+
+        pre.
+            cv::Mat src(480, 640, CV_8UC1);
+            cv::Mat roi = cv::Rect(10,10, 64, 64);
+            cv::Mat::eye(65,65, CV_8UC1).copyTo(roi);
+
+    li.
+        OpenCV's implementation of the SURF features are much weaker (and slower) than OpenSURF.
+
+    li.
+        cv::Ptr&lt;T&gt; ? O'RLY? What about std::shared_ptr and boost::shared_ptr?
+
+    li.
+        OpenCV's non-linear solver used for homography and PnP problem gives bad precision and poor stability. Reason? Straighforward implementation. 
+        No special care taken to deal with numeric precision. 
+
+| If your code is heavily coupled with OpenCV data types or API calls - you're in trouble. 
+| If you don't use regression testing for your project you're in a big trouble - there is a chance that you'll know that your product isn't working anymore form customers.
+</code></pre>
+
+<p>p.lead Encapsulate OpenCV calls into a kind of service.</p>
+
+<p>p.
+    A sign of a good design when you able to change the implementation of this service easily.
+    Imagine that you replace OpenCV with EgmuCV for instance. How much work has to be done for this?</p>
+
+<p>h1 Avoid &lsquo;Not invented here&rsquo;</p>
+
+<p>p.
+    Don&rsquo;t get me wrong, for many cases using OpenCV is ok. Even more, use OpenCV unless you have strong reasons to implement Lev-Mar algorithm by yourself.
+    Personally I&rsquo;m using OpenCV if I want to make a quick proof-of-concept application.
+    However, for performance-critical applications sometimes you have to throw OpenCV away and write it from scratch.
+    Motivation to make this step could vary from low-level code optimization using Assembly language for example.</p>
+
+<p>p
+    | It&rsquo;s a bad sign when third-party libraries affect the design of your application.
+    strong Don&rsquo;t let the cv::Mat spread across your codebase!
+    | OpenCV is a external dependency so try to keep it deep inside and don&rsquo;t expose it&rsquo;s API to public code please.
+    | There is a big temptation to use cv::Mat for storing images, matrices everywhere. Think twice before doing that.
+    | A question that you ask yourself before doing this - &ldquo;how much code I&rsquo;ll have to change if we replace OpenCV with something other someday?&rdquo;.</p>
+
+<p>p.
+    If you&rsquo;re looking for a good containers for matrices, please take a look on Eigen library or boost::ublas.
+    You may want to use Eigen for storing images too since it guarantee memory alignment and there is a nice benefit on accessing aligned pointers.
+    Also take a look on boost::gil library.</p>
+
+<p>h1 So how to hide OpenCV?</p>
+
+<p>p
+    | It&rsquo;s relatively simple with a facade in your business logic. Suppose one may want to have a function to compute strong corners on the input image.
+    | The implementation can looks like this (The Image8U and Corner are used-defined types):</p>
+
+<pre><code>pre.
+    int ComputeStrongCorners(Image8U&amp; src, std::vector&lt;Corner&gt;&amp; corners)
+    {
+        corners.clear();
+
+        #if HAS_NEON_SUPPORT
+            return ComputeStrongCornersNeon(src, corners);
+        #elif HAS_AVX_SUPPORT 
+            return ComputeStrongCornersAVX(src, corners);
+        #elif HAS_OPENCL_SUPPORT
+            return ComputeStrongCornersOpenCL(src, corners);        
+        #endif
+
+        return ComputeStrongCornersDefault(src, corners);
+    }
+
+    int ComputeStrongCornersDefault(src, corners)
+    {
+        cv::goodFeaturesToTrack( Map&lt; cv::Mat &gt;(src), Map&lt; std::vector&lt;cv::Keypoint&gt; &gt;(corners) );
+    }
+
+| This code snippet illustrate an idea of compile-time call dispatching to particular implementation. 
+| Pleas note, that public API of ComputeStrongCorners function does not expose OpenCV types to the user code. 
+| During build compiler will use one of the optimized routines if they are available or default one. 
+| The Map&lt;T&gt; class is a service class for mapping user types to OpenCV and vice versa. 
+| I'll publish a post on how to map user structures to OpenCV without data copy some day.
+</code></pre>
+
+<p>h1 OpenCV is a trend, nothing more</p>
+
+<p>p.lead
+    | It&rsquo;s important to remember that OpenCV is just a library with a set of standard functions, nothing more.
+    | No one is looking for &lsquo;STL programmer&rsquo;, but why &lsquo;OpenCV programmer&rsquo; is a top trending search in linked-in?
+p
+    | Dozens of examples on object recognition, tracking, face detection makes a fake illusion of understanding computer vision.
+    | The fact that someone called two functions with right arguments doesn&rsquo;t make this person a computer vision pro.</p>
+
+		</div>
+		
+<div class="entry-tags clearfix">
+	<svg class="icon icon-tag" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="m4.73135 3.3795002q0-.5597-.39604-.9557-.39604-.3961-.95577-.3961-.55974 0-.95578.3961-.39604.396-.39604.9557 0 .5598.39604.9558.39604.3961.95578.3961.55973 0 .95577-.3961.39604-.396.39604-.9558zm11.26865 6.0832q0 .5596998-.39076.9504998l-5.18548 5.196q-.41188.3908-.9610504.3908-.55974 0-.9505-.3908l-7.5511496-7.5616998q-.40132-.3907-.68119-1.0666-.27987-.6759-.27987-1.2357v-4.3934q0-.54920004.40132-.95050004.40132-.4013.9505-.4013h4.39339q.55974 0 1.23565.2799.67591.2798 1.07723.6812l7.55115 7.54060004q.39076.4118.39076.961z"/></svg>
+	<ul>
+		<li><a href="/tags/opencv/" rel="tag">opencv</a></li>
+		
+	</ul>
+</div>
+	</article>
+	
+<div class="mr-author-box clearfix">
+	<figure class="mr-author-box-avatar">
+		<img alt="Eugene Khvedchenya avatar" src="/img/avatar.png" class="avatar avatar-90 photo" height="90" width="90">
+	</figure>
+	<div class="mr-author-box-header">
+		<span class="mr-author-box-name">About Eugene Khvedchenya</span>
+	</div>
+	<div class="mr-author-box-bio">
+		Eugene Khvedchenya is a computer vision developer skilled in high-performance image processing. In his spare time he loves to share his knowledge and thoughts about computer vision and augmented reality
+	</div>
+</div>
+
+	
+
+	<nav class="mr-post-nav mr-row clearfix" itemscope="itemscope" itemtype="http://schema.org/SiteNavigationElement">
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-prev">
+			<a href="/post/kaze-1.6-in-opencv/" rel="prev"><span>«Previous</span><p>Integration of KAZE 1.6 in OpenCV</p></a>
+		</div>
+		
+		
+		<div class="mr-col-1-2 mr-post-nav-item mr-post-nav-next">
+			<a href="/post/2014-02-23-using-travis-ci/" rel="next"><span>Next»</span><p>Using Travis-CI for continuous testing your projects</p></a>
+		</div>
+		
+	</nav>
+
+
+	
+<div id="mr-comments" class="mr-comments-wrap">
+	<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'cvtalks';
+    var disqus_identifier = '\/post\/opencv-is-not-a-panacea\/';
+    var disqus_title = 'OpenCV is not a panacea';
+    var disqus_url = '\/post\/opencv-is-not-a-panacea\/';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+
+</div>
+
+<aside class="mr-sidebar" itemscope="itemscope" itemtype="http://schema.org/WPSideBar">
+	
+<div class="mr-widget widget_search">
+	<form class="search-form" role="search" method="get" action="//google.com/search">
+		<label>
+			<span class="screen-reader-text">Search for:</span>
+			<input type="search" class="search-field" placeholder="SEARCH..." value="" name="q">
+		</label>
+		<input class="search-submit" type="submit" value="Search">
+		<input type="hidden" name="sitesearch" value="/" />
+	</form>
+</div>
+
+	
+<div class="mr-widget widget_recent_entries">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Recent Posts</span></h4>
+	<ul>
+		
+		<li><a href="/post/how-to-write-good-code/">How to write a good code</a></li>
+		
+		<li><a href="/post/introducing-cloudcv-bootstrap/">Introducing CloudCV bootstrap</a></li>
+		
+		<li><a href="/post/how-to-debug-nodejs-addons-in-visual-studio/">How to debug node.js addons in Visual Studio</a></li>
+		
+		<li><a href="/post/hacking-opencv-for-fun-and-profit/">Hacking OpenCV for fun and profit</a></li>
+		
+		<li><a href="/post/tile-based-image-processing/">Tile-based image processing</a></li>
+		
+		<li><a href="/post/image-processing-in-your-browser-unit-test-automation/">Image processing in your browser - Unit Test automation</a></li>
+		
+		<li><a href="/post/computer-vision-digest-september-2014/">Computer Vision Digest - September 2014</a></li>
+		
+		<li><a href="/post/how-to-convert-args-from-js-to-cpp/">Argument checking for native addons for Node.js. Do it right!</a></li>
+		
+		<li><a href="/post/computer-vision-digest-august-2014/">Computer Vision Digest - August 2014</a></li>
+		
+		<li><a href="/post/mapping-eigen-to-opencv/">Mapping data from Eigen to OpenCV and back</a></li>
+		
+	</ul>
+</div>
+
+
+	
+
+
+
+
+	
+
+
+<div class="mr-widget widget_tag_cloud">
+	<h4 class="mr-widget-title"><span class="mr-widget-title-inner">Tags</span></h4>
+	<div class="tagcloud">
+		
+			<a href="/tags/algorithms" class="tag-link" title="algorithms" style="font-size: 12px;">algorithms</a>
+		
+			<a href="/tags/ar" class="tag-link" title="ar" style="font-size: 12px;">ar</a>
+		
+			<a href="/tags/books" class="tag-link" title="books" style="font-size: 12px;">books</a>
+		
+			<a href="/tags/cloud-computing" class="tag-link" title="cloud-computing" style="font-size: 12px;">cloud-computing</a>
+		
+			<a href="/tags/cloudcv" class="tag-link" title="cloudcv" style="font-size: 12px;">cloudcv</a>
+		
+			<a href="/tags/coursera" class="tag-link" title="coursera" style="font-size: 12px;">coursera</a>
+		
+			<a href="/tags/cpp" class="tag-link" title="cpp" style="font-size: 12px;">cpp</a>
+		
+			<a href="/tags/digest" class="tag-link" title="digest" style="font-size: 12px;">digest</a>
+		
+			<a href="/tags/iphone" class="tag-link" title="iphone" style="font-size: 12px;">iphone</a>
+		
+			<a href="/tags/neon" class="tag-link" title="neon" style="font-size: 12px;">neon</a>
+		
+			<a href="/tags/news" class="tag-link" title="news" style="font-size: 12px;">news</a>
+		
+			<a href="/tags/nodejs" class="tag-link" title="nodejs" style="font-size: 12px;">nodejs</a>
+		
+			<a href="/tags/opencv" class="tag-link" title="opencv" style="font-size: 12px;">opencv</a>
+		
+			<a href="/tags/reddit" class="tag-link" title="reddit" style="font-size: 12px;">reddit</a>
+		
+			<a href="/tags/scala" class="tag-link" title="scala" style="font-size: 12px;">scala</a>
+		
+			<a href="/tags/tutorials" class="tag-link" title="tutorials" style="font-size: 12px;">tutorials</a>
+		
+			<a href="/tags/visualstudio" class="tag-link" title="visualstudio" style="font-size: 12px;">visualstudio</a>
+		
+			<a href="/tags/xcode" class="tag-link" title="xcode" style="font-size: 12px;">xcode</a>
+		
+	</div>
+</div>
+
+
+
+</aside>
+	</div>
+		<div class="mr-copyright-wrap">
+			<div class="mr-container mr-container-inner clearfix">
+				<p class="mr-copyright">&copy; 2017 Computer Vision Talks. Based on <a href="//wordpress.org/themes/mh-magazine-lite/" target="_blank" rel="nofollow noopener noreferrer">MH Magazine lite</a>.</p>
+			</div>
+		</div>
+	</div>
+
+<script>
+	var navigation = responsiveNav(".menu", {
+		navClass: "menu--collapse",
+	});
+</script>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-10687369-5', 'auto');
+ga('send', 'pageview');
+</script>
+
+</body>
+</html>
